@@ -1,0 +1,52 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Bundled llama.cpp binaries (fetched via scripts/fetch-llama-server.ps1)
+src-tauri/resources/llama/
+src-tauri/vendor/
+
+# Bundled stable-diffusion.cpp binaries (fetched via scripts/fetch-sd.ps1)
+src-tauri/resources/sd/
+
+# Bundled ONNX Runtime + exported Laya decision model (fetched/exported via
+# scripts/fetch-onnxruntime.ps1 and scripts/export-laya-onnx.py)
+src-tauri/resources/onnxruntime/
+src-tauri/resources/laya/
+.laya-export-venv/
+
+# Local test model, never commit model weights
+src-tauri/test-model/
+src-tauri/target/
+
+# Local databases and runtime artifacts
+*.db
+*.db-journal
+/*.png
+/*.txt
+!src-tauri/icons/*.png
+app_err.log
+app_out.log
+stderr.log
+stdout.log
