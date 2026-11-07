@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Mascot } from 'page-mascot'
 import { navItems } from '../../lib/navigation'
+import { useNetworkStatus } from '../../lib/networkStatus'
 
 export function Sidebar() {
+  const { effectiveOnline, forceOffline, toggleForceOffline } = useNetworkStatus()
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true'
   })
@@ -29,8 +32,12 @@ export function Sidebar() {
         }`}
       >
         <div className="flex items-center gap-2 overflow-hidden">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-sm font-semibold text-white shadow-[var(--shadow-sm)]">
-            S
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+            <Mascot
+              directions="/mascots/cap-directions.webp"
+              reactions="/mascots/cap-reactions.webp"
+              size={36}
+            />
           </div>
           {!collapsed && (
             <span className="truncate text-sm font-semibold text-[var(--text)]">
@@ -75,15 +82,47 @@ export function Sidebar() {
       </nav>
 
       <div className="pt-2">
-        <div
-          title="Offline mode — zero cloud dependencies"
-          className={`flex items-center rounded-xl border border-[var(--border)] py-2 text-xs text-[var(--muted)] ${
-            collapsed ? 'justify-center px-0' : 'gap-2 px-3'
+        <button
+          type="button"
+          onClick={() => toggleForceOffline()}
+          title={
+            effectiveOnline
+              ? 'Internet Connected • Live web & external tools active (Click to force air-gapped mode)'
+              : forceOffline
+              ? 'Air-Gapped Mode Forced • Click to re-enable online access'
+              : 'Offline • Operating from local models and memories only (Click to toggle)'
+          }
+          className={`flex w-full items-center rounded-xl border py-2 text-xs transition-all duration-200 ${
+            collapsed ? 'justify-center px-0' : 'justify-between px-3'
+          } ${
+            effectiveOnline
+              ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+              : 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10'
           }`}
         >
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
-          {!collapsed && <span>Offline</span>}
-        </div>
+          <div className="flex items-center gap-2 overflow-hidden">
+            <span className="relative flex h-2 w-2 shrink-0">
+              {effectiveOnline && (
+                <span className="absolute -inset-0.5 animate-ping rounded-full bg-emerald-400 opacity-75" />
+              )}
+              <span
+                className={`relative inline-flex h-2 w-2 rounded-full ${
+                  effectiveOnline ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
+              />
+            </span>
+            {!collapsed && (
+              <span className="truncate font-medium">
+                {effectiveOnline ? 'Online' : forceOffline ? 'Offline (Air-gap)' : 'Offline'}
+              </span>
+            )}
+          </div>
+          {!collapsed && (
+            <span className="text-[10px] opacity-75">
+              {effectiveOnline ? 'Live Web' : 'Local Only'}
+            </span>
+          )}
+        </button>
       </div>
     </aside>
   )

@@ -340,6 +340,18 @@ Begin **Phase 12 — AI Game Generation** or **Phase 14 — Settings & Runtime C
 1. Phase 12: Prompt-to-game generator using local GGUF text model with templates (canvas, arcade, puzzle) generating self-contained playable add-ons.
 2. Phase 14: Settings controls for storage paths, cache management, hardware thread sliders, and diagnostics.
 
+## Cross-Platform macOS (Apple Silicon Metal) & Featherweight Optimization — DONE
+
+- **macOS Native Sidecar Runtimes (`scripts/setup-mac.sh`)**:
+  - Added `scripts/fetch-llama-server.sh`, `scripts/fetch-sd.sh`, and `scripts/fetch-onnxruntime.sh` to automatically download and configure prebuilt macOS `arm64` (Apple Silicon Metal GPU) and `x86_64` binaries into `src-tauri/resources/`.
+  - Configured `DYLD_LIBRARY_PATH` (macOS) and `LD_LIBRARY_PATH` (Linux) resolution in `text_engine.rs` and `image_engine.rs`, plus automatic `-ngl 99` Metal GPU layer offloading on macOS.
+  - Added background idle RAM reapers (`300s` for `llama-server`, `180s` for `sd-server`) and a 1-click "Stop Active Engines & Free All RAM Now" control in `SettingsPage.tsx`.
+  - Enabled zero-friction auto-start in `ChatPage.tsx` so sending a message automatically starts the selected text model if idle.
+- **Cross-Platform Hardware Profiler & Featherweight Model Hub (`system_info.rs`, `curatedModels.ts`, `ModelsPage.tsx`)**:
+  - Implemented `get_system_specs` in Rust to detect CPU brand (`Apple M4`), RAM/Unified Memory, core count, and active acceleration backend (`Apple Metal GPU + Unified Memory` vs `AVX2 Multi-Core CPU`).
+  - Expanded `curatedModels.ts` with Featherweight models (`SmolLM2 135M` at 101 MB, `SmolLM2 360M` at 258 MB, `Qwen 2.5 0.5B` at 469 MB, `Llama 3.2 1B` at 770 MB, `Qwen 2.5 1.5B` at 1.04 GB) and quantized GGUF image models (`DreamShaper 8 LCM IQ4_NL` at 1.46 GB, `LCM DreamShaper v7 Q4_0` at 1.51 GB, `SD-Turbo Q8_0 GGUF` at 1.88 GB).
+  - Added hardware profile banner and tier filters (`All Sizes`, `Best for This Device`, `Featherweight (<1 GB)`, `Compact`, `Pro`) on `ModelsPage.tsx`.
+
 
 
 

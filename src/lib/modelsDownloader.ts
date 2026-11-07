@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { isTauriRuntime } from './db'
 
 export interface DownloadProgress {
   id: string
@@ -19,6 +20,11 @@ export async function startModelDownload(
   url: string,
   filename: string,
 ): Promise<string> {
+  if (!isTauriRuntime()) {
+    throw new Error(
+      'You opened localhost:1420 in a web browser. Switch to the Second Brain desktop app window (run "npm run dev" or "npm run tauri dev") to download and run local AI models.',
+    )
+  }
   return await invoke<string>('download_model', {
     id,
     url,
@@ -27,12 +33,16 @@ export async function startModelDownload(
 }
 
 export async function cancelModelDownload(id: string): Promise<void> {
+  if (!isTauriRuntime()) return
   await invoke('cancel_model_download', { id })
 }
 
 export async function onDownloadProgress(
   callback: (progress: DownloadProgress) => void,
 ): Promise<UnlistenFn> {
+  if (!isTauriRuntime()) {
+    return () => {}
+  }
   return await listen<RawProgressPayload>('model-download:progress', (event) => {
     const { id, downloaded_bytes, total_bytes } = event.payload
     const percentage =

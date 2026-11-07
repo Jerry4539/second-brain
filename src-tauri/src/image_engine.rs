@@ -8,6 +8,8 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::process::Command;
 use tokio::sync::Notify;
 
+const IMAGE_IDLE_REAP_SECS: u64 = 180; // Automatically free image model RAM after 3 minutes idle
+
 struct ActiveGeneration {
   request_id: String,
   cancel: Arc<Notify>,
@@ -20,10 +22,61 @@ struct ServerInstance {
   last_used: Instant,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ImageEngineState {
-  active: Mutex<Option<ActiveGeneration>>,
-  server: tokio::sync::Mutex<Option<ServerInstance>>,
+  active: Arc<Mutex<Option<ActiveGeneration>>>,
+  server: Arc<tokio::sync::Mutex<Option<ServerInstance>>>,
+}
+
+/// Truncates a prompt so it fits comfortably within SD 1.5 / SD-Turbo's single 77-token CLIP window
+/// and strips tail instructions ("Aspect ratio 16:9", "No borders...") that cause multi-chunk NaN.
+fn sanitize_sd_prompt(raw: &str) -> String {
+  let cleaned = raw
+    .replace("Create an ultra-realistic", "Ultra-realistic")
+    .replace("Create an image of", "")
+    .replace("Create a photograph of", "Photograph of")
+    .replace('\n', " ");
+
+  let cut_markers = [
+    "Aspect ratio",
+    "aspect ratio",
+    "No borders",
+    "no borders",
+    "no watermark",
+    "No watermark",
+  ];
+  let mut slice = cleaned.as_str();
+  for marker in cut_markers {
+    if let Some(idx) = slice.find(marker) {
+      if idx > 24 {
+        slice = &slice[..idx];
+      }
+    }
+  }
+
+  let words: Vec<&str> = slice.split_whitespace().take(48).collect();
+  let joined = words
+    .join(" ")
+    .trim()
+    .trim_end_matches(',')
+    .trim_end_matches('.')
+    .to_string();
+  if joined.is_empty() {
+    "cinematic digital artwork, vibrant lighting, high detail".to_string()
+  } else {
+    joined
+  }
+}
+
+/// Detects solid gray (#7f7f7f) or corrupt PNG outputs caused by FP16/Metal NaN overflow.
+/// A 384x384 or 512x512 solid gray PNG compresses via DEFLATE to ~800 - 4,500 bytes,
+/// whereas any real diffusion image is > 25,000 bytes.
+fn is_solid_gray_or_corrupt_png(bytes: &[u8]) -> bool {
+  if bytes.len() < 18_000 {
+    return true;
+  }
+  const PNG_SIG: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
+  bytes.len() < 8 || bytes[..8] != PNG_SIG
 }
 
 #[derive(Serialize, Clone)]
@@ -68,15 +121,34 @@ fn images_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn optimal_thread_count() -> i32 {
-  // Clamp thread count to 4 (range 2..=4).
-  // On hybrid architectures (Intel Alder Lake / Raptor Lake with P-cores & E-cores,
-  // AMD multi-CCX, and Apple Silicon), saturating all logical threads causes severe
-  // thermal throttling (dropping clocks from ~4.5GHz to ~1.8GHz) and excessive fan noise.
-  // Limiting computation to 4 threads keeps the CPU whisper cool, prevents throttling,
-  // and paradoxically finishes generations significantly faster.
-  std::thread::available_parallelism()
-    .map(|n| (n.get() as i32).clamp(2, 4))
-    .unwrap_or(4)
+  let cores = std::thread::available_parallelism()
+    .map(|n| n.get())
+    .unwrap_or(4);
+  let is_apple_silicon = cfg!(all(target_os = "macos", target_arch = "aarch64"));
+  crate::system_info::compute_optimal_threads(cores, is_apple_silicon)
+}
+
+fn spawn_image_idle_reaper(state: ImageEngineState) {
+  tokio::spawn(async move {
+    loop {
+      tokio::time::sleep(Duration::from_secs(30)).await;
+      let is_busy = state.active.lock().map(|g| g.is_some()).unwrap_or(false);
+      if is_busy {
+        continue;
+      }
+      let mut guard = state.server.lock().await;
+      if let Some(inst) = guard.as_ref() {
+        if inst.last_used.elapsed() >= Duration::from_secs(IMAGE_IDLE_REAP_SECS) {
+          log::info!("Image engine idle for {IMAGE_IDLE_REAP_SECS}s — stopping sd-server to free RAM");
+          if let Some(mut child_inst) = guard.take() {
+            let _ = child_inst.child.start_kill();
+            let _ = child_inst.child.wait().await;
+          }
+          break;
+        }
+      }
+    }
+  });
 }
 
 fn find_free_port() -> Result<u16, String> {
@@ -282,6 +354,7 @@ async fn generate_with_server_or_cli(
   sampling_method: Option<&str>,
   cancel: Arc<Notify>,
 ) -> Result<String, String> {
+  let clean_prompt = sanitize_sd_prompt(prompt);
   let sd_server = sd_server_path(app)?;
   if sd_server.exists() {
     match generate_via_server(
@@ -289,7 +362,7 @@ async fn generate_with_server_or_cli(
       state,
       &sd_server,
       model_path,
-      prompt,
+      &clean_prompt,
       negative_prompt,
       width,
       height,
@@ -303,16 +376,16 @@ async fn generate_with_server_or_cli(
     {
       Ok(path) => return Ok(path),
       Err(err) => {
-        log::warn!("sd-server failed, falling back to sd-cli: {err}");
+        log::warn!("sd-server failed or produced blank output, falling back to sd-cli: {err}");
       }
     }
   }
 
-  // Fallback to sd-cli
-  run_cli_generation(
+  // Fallback to sd-cli (first try standard backend with CPU VAE/CLIP, then pure CPU/Accelerate if needed)
+  match run_cli_generation(
     app,
     model_path,
-    prompt,
+    &clean_prompt,
     negative_prompt,
     width,
     height,
@@ -320,9 +393,34 @@ async fn generate_with_server_or_cli(
     seed,
     cfg_scale,
     sampling_method,
-    cancel,
+    false,
+    cancel.clone(),
   )
   .await
+  {
+    Ok(path) => Ok(path),
+    Err(first_err) => {
+      if first_err.contains("cancelled") {
+        return Err(first_err);
+      }
+      log::warn!("sd-cli default backend failed ({first_err}), retrying with --backend cpu");
+      run_cli_generation(
+        app,
+        model_path,
+        &clean_prompt,
+        negative_prompt,
+        width,
+        height,
+        steps,
+        seed,
+        cfg_scale,
+        sampling_method,
+        true,
+        cancel,
+      )
+      .await
+    }
+  }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -358,11 +456,26 @@ async fn generate_via_server(
     };
 
     if needs_spawn {
+      #[cfg(unix)]
+      {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(meta) = std::fs::metadata(sd_server) {
+          let mut perms = meta.permissions();
+          if perms.mode() & 0o111 == 0 {
+            perms.set_mode(perms.mode() | 0o755);
+            let _ = std::fs::set_permissions(sd_server, perms);
+          }
+        }
+      }
       let p = find_free_port()?;
       let threads = optimal_thread_count();
       let mut cmd = Command::new(sd_server);
       if let Some(parent) = sd_server.parent() {
         cmd.current_dir(parent);
+        #[cfg(target_os = "macos")]
+        cmd.env("DYLD_LIBRARY_PATH", parent);
+        #[cfg(target_os = "linux")]
+        cmd.env("LD_LIBRARY_PATH", parent);
       }
       #[cfg(windows)]
       {
@@ -379,7 +492,18 @@ async fn generate_via_server(
         "-t",
         &threads.to_string(),
         "--mmap",
+        "--diffusion-fa",
       ]);
+      if model_path.to_lowercase().contains("lcm") {
+        cmd.args([
+          "--sampling-method",
+          "lcm",
+          "--scheduler",
+          "lcm",
+          "--cfg-scale",
+          "1.0",
+        ]);
+      }
       cmd
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -392,6 +516,7 @@ async fn generate_via_server(
         port: p,
         last_used: Instant::now(),
       });
+      spawn_image_idle_reaper(state.inner().clone());
 
       // Poll until server is ready (up to 45s)
       let client = reqwest::Client::new();
@@ -418,21 +543,33 @@ async fn generate_via_server(
     .build()
     .map_err(|e| e.to_string())?;
 
+  let lower_model = model_path.to_lowercase();
   let is_lcm = sampling_method.map(|s| s.eq_ignore_ascii_case("lcm")).unwrap_or(false)
-    || model_path.to_lowercase().contains("lcm");
+    || lower_model.contains("lcm");
+  let is_turbo = lower_model.contains("turbo");
 
-  let default_neg = "deformed, distorted, disfigured, poorly drawn, bad anatomy, mutated, extra limbs, blurry, out of focus, duplicate, low quality";
+  let default_neg = "ugly, deformed, noisy, blurry, low contrast, oversaturated, grainy, pixelated, bad anatomy, artifacts";
   let neg = negative_prompt.filter(|s| !s.trim().is_empty()).unwrap_or(default_neg);
-  let default_cfg = if is_lcm { 1.8 } else { 7.0 };
-  let effective_cfg = cfg_scale.unwrap_or(default_cfg);
+  let default_cfg = if is_lcm || is_turbo { 1.0 } else { 7.0 };
+  let raw_cfg = cfg_scale.unwrap_or(default_cfg);
+  let effective_cfg = if (is_lcm || is_turbo) && raw_cfg > 2.2 {
+    1.0
+  } else {
+    raw_cfg
+  };
+
+  let scheduler_name = if is_lcm { "lcm" } else { "karras" };
+  let sampler_name = sampling_method.unwrap_or(if is_lcm { "lcm" } else { "euler_a" });
 
   let payload = serde_json::json!({
     "prompt": prompt,
-    "negative_prompt": neg,
+    "negative_prompt": if effective_cfg <= 1.05 { "" } else { neg },
     "steps": steps,
     "cfg_scale": effective_cfg,
-    "sampler_name": sampling_method.unwrap_or(if is_lcm { "lcm" } else { "euler_a" }),
-    "schedule": if is_lcm { "lcm" } else { "normal" },
+    "sampler_name": sampler_name,
+    "sampler_index": sampler_name,
+    "scheduler": scheduler_name,
+    "schedule": scheduler_name,
     "width": width,
     "height": height,
     "seed": seed.unwrap_or(-1)
@@ -465,6 +602,15 @@ async fn generate_via_server(
 
   let raw_bytes = base64_decode(b64)?;
 
+  if is_solid_gray_or_corrupt_png(&raw_bytes) {
+    // Kill the warm server if it produced a solid-gray NaN image on Metal so sd-cli can take over
+    if let Some(mut inst) = state.server.lock().await.take() {
+      let _ = inst.child.start_kill();
+      let _ = inst.child.wait().await;
+    }
+    return Err("sd-server produced a solid gray (NaN) image; switching to CPU/Accelerate fallback".to_string());
+  }
+
   let dir = images_dir(app)?;
   let file_name = format!("{}.png", uuid::Uuid::new_v4());
   let output_path = dir.join(&file_name);
@@ -491,6 +637,7 @@ async fn run_cli_generation(
   seed: Option<i64>,
   cfg_scale: Option<f32>,
   sampling_method: Option<&str>,
+  force_cpu_backend: bool,
   cancel: Arc<Notify>,
 ) -> Result<String, String> {
   let sd_cli = sd_cli_path(app)?;
@@ -509,10 +656,26 @@ async fn run_cli_generation(
     .ok_or("invalid output path")?
     .to_string();
 
+  #[cfg(unix)]
+  {
+    use std::os::unix::fs::PermissionsExt;
+    if let Ok(meta) = std::fs::metadata(&sd_cli) {
+      let mut perms = meta.permissions();
+      if perms.mode() & 0o111 == 0 {
+        perms.set_mode(perms.mode() | 0o755);
+        let _ = std::fs::set_permissions(&sd_cli, perms);
+      }
+    }
+  }
+
   let threads = optimal_thread_count();
   let mut cmd = Command::new(&sd_cli);
   if let Some(parent) = sd_cli.parent() {
     cmd.current_dir(parent);
+    #[cfg(target_os = "macos")]
+    cmd.env("DYLD_LIBRARY_PATH", parent);
+    #[cfg(target_os = "linux")]
+    cmd.env("LD_LIBRARY_PATH", parent);
   }
   #[cfg(windows)]
   {
@@ -535,29 +698,42 @@ async fn run_cli_generation(
     "-t",
     &threads.to_string(),
     "--mmap",
+    "--diffusion-fa",
   ]);
-  let is_lcm = sampling_method.map(|s| s.eq_ignore_ascii_case("lcm")).unwrap_or(false)
-    || model_path.to_lowercase().contains("lcm");
+  if force_cpu_backend {
+    cmd.args(["--backend", "cpu"]);
+  }
 
-  if let Some(neg) = negative_prompt.filter(|s| !s.is_empty()) {
-    cmd.args(["-n", neg]);
-  } else {
-    cmd.args(["-n", "deformed, distorted, disfigured, poorly drawn, bad anatomy, mutated, extra limbs, blurry, out of focus, duplicate, low quality"]);
-  }
+  let lower_model = model_path.to_lowercase();
+  let is_lcm = sampling_method.map(|s| s.eq_ignore_ascii_case("lcm")).unwrap_or(false)
+    || lower_model.contains("lcm");
+  let is_turbo = lower_model.contains("turbo");
+
+  let default_neg = "ugly, deformed, noisy, blurry, low contrast, oversaturated, grainy, pixelated, bad anatomy, artifacts";
+  let neg = negative_prompt.filter(|s| !s.trim().is_empty()).unwrap_or(default_neg);
+
   cmd.args(["-s", &seed.unwrap_or(-1).to_string()]);
-  if let Some(cfg) = cfg_scale {
-    cmd.args(["--cfg-scale", &cfg.to_string()]);
-  } else if is_lcm {
-    cmd.args(["--cfg-scale", "1.8"]);
+  let default_cfg = if is_lcm || is_turbo { 1.0 } else { 7.0 };
+  let raw_cfg = cfg_scale.unwrap_or(default_cfg);
+  let effective_cfg = if (is_lcm || is_turbo) && raw_cfg > 2.2 {
+    1.0
+  } else {
+    raw_cfg
+  };
+  if effective_cfg > 1.05 {
+    cmd.args(["-n", neg]);
   }
+  cmd.args(["--cfg-scale", &effective_cfg.to_string()]);
+
   if let Some(method) = sampling_method.filter(|s| !s.is_empty()) {
     cmd.args(["--sampling-method", method]);
   } else if is_lcm {
     cmd.args(["--sampling-method", "lcm"]);
+  } else {
+    cmd.args(["--sampling-method", "euler_a"]);
   }
-  if is_lcm {
-    cmd.args(["--scheduler", "lcm"]);
-  }
+  let scheduler_arg = if is_lcm { "lcm" } else { "karras" };
+  cmd.args(["--scheduler", scheduler_arg]);
   cmd
     .stdin(Stdio::null())
     .stdout(Stdio::null())
@@ -584,6 +760,13 @@ async fn run_cli_generation(
   }
   if !output_path.exists() {
     return Err("sd-cli finished but no image was written".to_string());
+  }
+
+  let written_bytes = std::fs::read(&output_path)
+    .map_err(|e| format!("failed to read generated image: {e}"))?;
+  if is_solid_gray_or_corrupt_png(&written_bytes) {
+    let _ = std::fs::remove_file(&output_path);
+    return Err("generated image was solid gray (NaN overflow)".to_string());
   }
 
   Ok(output_str)

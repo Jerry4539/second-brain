@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { isTauriRuntime } from './db'
 
 export interface EngineStatus {
   running: boolean
@@ -22,18 +23,28 @@ export interface GenerationSettings {
 }
 
 export function startTextEngine(modelPath: string): Promise<void> {
+  if (!isTauriRuntime()) {
+    return Promise.reject(
+      new Error('Please use the native Second Brain desktop window (npm run dev / npm run tauri dev) to start local AI engines.'),
+    )
+  }
   return invoke('start_text_engine', { modelPath })
 }
 
 export function stopTextEngine(): Promise<void> {
+  if (!isTauriRuntime()) return Promise.resolve()
   return invoke('stop_text_engine')
 }
 
 export function textEngineStatus(): Promise<EngineStatus> {
+  if (!isTauriRuntime()) {
+    return Promise.resolve({ running: false, model_path: null })
+  }
   return invoke('text_engine_status')
 }
 
 export function cancelGeneration(requestId: string): Promise<void> {
+  if (!isTauriRuntime()) return Promise.resolve()
   return invoke('cancel_generation', { requestId })
 }
 

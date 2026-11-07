@@ -116,11 +116,9 @@ Detailed, dated log of exactly what was done in each phase: [docs/PROGRESS.md](.
   `llama-cpp-2` Rust bindings crate, which needs bindgen/libclang (~1GB LLVM install not present on
   this dev machine) — see `docs/PROGRESS.md` Phase 4 for the full reasoning. Killing the process
   fully reclaims its RAM, which matters for a "calm, lightweight, don't slow down the user's PC" app.
-- **The llama.cpp binaries are NOT committed to git.** Run `powershell -File
-  scripts/fetch-llama-server.ps1` once after cloning (or whenever the pinned release tag changes) to
-  populate `src-tauri/resources/llama/` before building. This is a Windows-only script right now
-  (fetches `llama-b10964-bin-win-cpu-x64.zip`); macOS needs its own script fetching
-  `llama-b10964-bin-macos-arm64.tar.gz` from the same GitHub release when Mac work starts.
+- **The llama.cpp, stable-diffusion.cpp, and onnxruntime binaries are NOT committed to git.**
+  - On **macOS** (Apple Silicon M1/M2/M3/M4 & Intel): run `npm run setup:mac` (or `bash scripts/setup-mac.sh`) once after cloning to populate `src-tauri/resources/llama/`, `src-tauri/resources/sd/`, and `src-tauri/resources/onnxruntime/` with Metal-accelerated arm64 binaries.
+  - On **Windows**: run `powershell -File scripts/fetch-llama-server.ps1`, `scripts/fetch-sd.ps1`, and `scripts/fetch-onnxruntime.ps1`.
 - **Testing binary/native-process features:** this dev environment has no real multi-GB GGUF model
   and can't drive the native Tauri window via automation. The pattern that worked well: (1) for pure
   parsing logic, write Rust unit tests against a synthetic in-memory byte buffer (see `gguf.rs`); (2)

@@ -1,5 +1,39 @@
 # Changelog
 
+## Cross-Platform macOS (Apple Silicon Metal) Setup, Hardware Profiler & Featherweight Model Hub
+
+- **Native macOS (Apple Silicon M-Series & Intel) Runtimes & Setup (`scripts/setup-mac.sh`)**:
+  - Added automated macOS runtime installers: `scripts/fetch-llama-server.sh` (Apple Metal GPU `libggml-metal.dylib` + `llama-server`), `scripts/fetch-sd.sh` (`sd-cli` + `sd-server` with Metal acceleration), and `scripts/fetch-onnxruntime.sh` (`libonnxruntime.dylib`), orchestrated via `npm run setup:mac`.
+  - Updated `tauri.conf.json` bundle targets to `"all"` so `tauri build` natively produces `.dmg`/`.app` on macOS and `.exe` NSIS installers on Windows.
+- **Cross-Platform Hardware Detection Engine (`src-tauri/src/system_info.rs`, `src/lib/systemInfo.ts`)**:
+  - Added `get_system_specs` command detecting OS, CPU architecture, chip brand (e.g., `Apple M4`), core count, total system/unified memory in GB, active acceleration backend (`Apple Metal GPU + Unified Memory` vs `AVX2 Multi-Core CPU`), optimal thread allocation, and recommended model tier (`nano`, `compact`, `pro`).
+- **Metal GPU Offload, Dynamic Library Resolution & Idle RAM Reapers (`text_engine.rs`, `image_engine.rs`)**:
+  - Configured `DYLD_LIBRARY_PATH` (macOS) and `LD_LIBRARY_PATH` (Linux) alongside `chmod +x` permission checks for `llama-server`, `sd-server`, and `sd-cli`.
+  - Enabled automatic `-ngl 99` (`--n-gpu-layers 99`) offload on macOS so 100% of transformer layers execute on the Apple Silicon GPU.
+  - Implemented background idle RAM reapers for both `text_engine.rs` (5-minute timeout) and `image_engine.rs` (3-minute timeout) so idle memory usage automatically returns to 0 MB.
+- **Zero-Friction Chat Auto-Start & Full-Featured Chat Suite (`src/pages/ChatPage.tsx`, `src/components/chat/MarkdownContent.tsx`, `src/lib/db.ts`, `src-tauri/src/commands.rs`)**:
+  - **Auto-Start on Send & Model Hot-Swap**: Sending a message when the text engine is `idle` automatically boots the selected GGUF model and streams the reply seamlessly; switching models while running hot-swaps the active engine.
+  - **6 Built-in AI Personas + Custom System Prompt**: Added 1-click persona switcher (`Chill Companion`, `Code Architect`, `Creative Writer`, `Deep Thinker`, `Speed Summarizer`, and `Custom Persona`) persisted in SQLite settings.
+  - **Live Streaming Telemetry**: Real-time tokens/sec (`tok/s`), token count, total elapsed seconds, and time-to-first-token (`TTFT`) displayed both during streaming and on completed assistant messages.
+  - **Interactive Slash Command Palette (`/`)**: Typing `/` opens a floating command palette (`/image`, `/code`, `/explain`, `/fix`, `/brainstorm`, `/summarize`, `/clear`).
+  - **File & Code Attachments**: Added `read_text_attachment` Rust command and `Attach File` picker in Chat to inject local `.txt`, `.md`, `.json`, `.py`, `.ts`, `.rs`, `.js`, `.sql`, etc. files into prompts.
+  - **Message Edit & Resubmit, Continue, Fork, Delete & Offline TTS**:
+    - Edit any user message inline and regenerate the conversation branch from that turn.
+    - Continue truncated/long assistant generations seamlessly (`Continue`).
+    - Fork/branch any conversation turn into a new thread (`Fork`).
+    - Offline Text-to-Speech (`Speak` / `Stop`) on assistant replies via Web Speech API.
+  - **Conversation Pinning, Inline Rename, In-Chat Search & Export**:
+    - Pin/star conversations to the top of the sidebar (`favorites` table) with a `Pinned` filter pill.
+    - Click the active conversation header to rename inline.
+    - Filter messages inside the active conversation and export chats as Markdown (`.md`), JSON (`.json`), or clipboard transcript.
+  - **Enhanced Markdown Renderer**: Added line-numbered code blocks with 1-click file download (`Save`), Markdown table rendering, task lists (`- [x]`), strikethrough, clickable links, and horizontal rules.
+- **Featherweight & Quantized Curated Models Hub (`src/lib/curatedModels.ts`, `src/pages/ModelsPage.tsx`)**:
+  - Added ultra-compact text models for the smallest devices: **SmolLM2 135M (101 MB)**, **SmolLM2 360M (258 MB)**, **Qwen 2.5 0.5B (469 MB)**, **Llama 3.2 1B (770 MB)**, and **Qwen 2.5 1.5B (1.04 GB)** alongside 2B–3B models.
+  - Added compact quantized GGUF image models: **DreamShaper 8 LCM IQ4_NL (1.46 GB)**, **LCM DreamShaper v7 Q4_0 (1.51 GB)**, and **SD-Turbo Q8_0 GGUF (1.88 GB)**.
+  - Upgraded `ModelsPage.tsx` with a live Hardware & Acceleration Banner and size/tier filter pills (`All Sizes`, `Best for This Device`, `Featherweight (<1 GB)`, `Compact`, `Pro`).
+- **Runtime Diagnostics & RAM Controls (`src/pages/SettingsPage.tsx`)**:
+  - Added live processor, memory, acceleration badge, default text/image model selectors, and a 1-click "Stop Active Engines & Free All RAM Now" action.
+
 ## Screen-Height Bento Game Layout, Add-ons Execution Upgrade & Dynamic Library (Phase 13)
 
 - **Screen-Height Bento Game Layout ([LudoBoard.tsx](file:///d:/NULL/2nd%20Brain/src/components/games/LudoBoard.tsx), [TicTacToeBoard.tsx](file:///d:/NULL/2nd%20Brain/src/components/games/TicTacToeBoard.tsx), [GameSandbox.tsx](file:///d:/NULL/2nd%20Brain/src/components/games/GameSandbox.tsx))**:

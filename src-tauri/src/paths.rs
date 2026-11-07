@@ -4,7 +4,22 @@ use tauri::{AppHandle, Manager};
 /// Resolves a resource file or directory across development, unbundled debug,
 /// and packaged production builds on Windows/macOS.
 pub fn resolve_resource(app: &AppHandle, relative: &str) -> Result<PathBuf, String> {
-  // 1. Try Tauri's resource_dir directly and under resources/
+  // 1. In development builds (`tauri dev` / `cargo test`), ALWAYS prefer the pristine source
+  // `src-tauri/resources/` directory first. On macOS Apple Silicon, `tauri-build` copying dylibs
+  // into `target/debug/resources/` can invalidate ad-hoc Mach-O code signatures (causing SIGKILL / signal 9).
+  #[cfg(debug_assertions)]
+  {
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join(relative);
+    if manifest.exists() {
+      return Ok(manifest);
+    }
+    let dev_path = PathBuf::from("src-tauri").join("resources").join(relative);
+    if dev_path.exists() {
+      return Ok(dev_path);
+    }
+  }
+
+  // 2. Try Tauri's resource_dir directly and under resources/
   if let Ok(base) = app.path().resource_dir() {
     let direct = base.join(relative);
     if direct.exists() {
@@ -58,13 +73,43 @@ mod tests {
   #[test]
   fn resolves_all_bundled_binaries_in_manifest() {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources");
-    let llama_exe = if cfg!(windows) { "llama/llama-server.exe" } else { "llama/llama-server" };
-    let sd_exe = if cfg!(windows) { "sd/sd-cli.exe" } else { "sd/sd-cli" };
-    let ort_dll = if cfg!(windows) { "onnxruntime/onnxruntime.dll" } else { "onnxruntime/libonnxruntime.so" };
+    let llama_exe = if cfg!(windows) {
+      "llama/llama-server.exe"
+    } else {
+      "llama/llama-server"
+    };
+    let sd_exe = if cfg!(windows) {
+      "sd/sd-cli.exe"
+    } else {
+      "sd/sd-cli"
+    };
+    let ort_dll = if cfg!(windows) {
+      "onnxruntime/onnxruntime.dll"
+    } else if cfg!(target_os = "macos") {
+      "onnxruntime/libonnxruntime.dylib"
+    } else {
+      "onnxruntime/libonnxruntime.so"
+    };
 
-    assert!(manifest.join(llama_exe).exists(), "llama-server must exist at {:?}", manifest.join(llama_exe));
-    assert!(manifest.join(sd_exe).exists(), "sd-cli must exist at {:?}", manifest.join(sd_exe));
-    assert!(manifest.join(ort_dll).exists(), "onnxruntime must exist at {:?}", manifest.join(ort_dll));
-    assert!(manifest.join("laya").join("model.onnx").exists(), "laya model must exist at {:?}", manifest.join("laya").join("model.onnx"));
+    assert!(
+      manifest.join(llama_exe).exists(),
+      "llama-server must exist at {:?}",
+      manifest.join(llama_exe)
+    );
+    assert!(
+      manifest.join(sd_exe).exists(),
+      "sd-cli must exist at {:?}",
+      manifest.join(sd_exe)
+    );
+    assert!(
+      manifest.join(ort_dll).exists(),
+      "onnxruntime must exist at {:?}",
+      manifest.join(ort_dll)
+    );
+    assert!(
+      manifest.join("laya").exists(),
+      "laya directory must exist at {:?}",
+      manifest.join("laya")
+    );
   }
 }

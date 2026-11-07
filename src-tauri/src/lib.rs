@@ -7,6 +7,7 @@ mod download;
 mod gguf;
 mod image_engine;
 pub mod paths;
+pub mod system_info;
 mod text_engine;
 
 fn migrations() -> Vec<Migration> {
@@ -146,10 +147,14 @@ pub fn run() {
     .manage(decision_engine::DecisionEngineState::default())
     .manage(download::DownloadState::default())
     .invoke_handler(tauri::generate_handler![
+      system_info::get_system_specs,
       commands::import_gguf_model,
       commands::scan_gguf_folder,
       commands::import_image_model,
       commands::scan_image_model_folder,
+      commands::read_text_attachment,
+      commands::agent_fetch_url,
+      commands::agent_save_workspace_note,
       download::download_model,
       download::cancel_model_download,
       text_engine::start_text_engine,

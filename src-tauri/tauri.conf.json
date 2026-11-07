@@ -1,17 +1,19 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Second Brain",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "identifier": "com.secondbrain.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:vite",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "title": "Second Brain",
         "width": 1200,
         "height": 780,
@@ -27,7 +29,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": "all",
     "resources": ["resources/llama/*", "resources/sd/*", "resources/onnxruntime/*", "resources/laya/**/*"],
     "icon": [
       "icons/32x32.png",

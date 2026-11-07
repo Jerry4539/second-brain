@@ -1,14 +1,19 @@
 {
   "name": "2nd-brain",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "tauri dev",
+    "dev:vite": "sh -c 'lsof -ti:1420 | xargs kill -9 2>/dev/null || true; exec vite'",
+    "start": "tauri dev",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "setup:mac": "bash scripts/setup-mac.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

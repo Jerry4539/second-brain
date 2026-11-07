@@ -458,7 +458,14 @@ mod tests {
   fn department_billing_matches_python_reference() {
     let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let laya_dir = manifest_dir.join("resources").join("laya");
-    let ort_dll = manifest_dir.join("resources").join("onnxruntime").join("onnxruntime.dll");
+    let ort_name = if cfg!(windows) {
+      "onnxruntime.dll"
+    } else if cfg!(target_os = "macos") {
+      "libonnxruntime.dylib"
+    } else {
+      "libonnxruntime.so"
+    };
+    let ort_dll = manifest_dir.join("resources").join("onnxruntime").join(ort_name);
     if !laya_dir.join("model.onnx").exists() || !ort_dll.exists() {
       eprintln!("skipping: laya/onnxruntime resources not present locally");
       return;

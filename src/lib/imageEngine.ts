@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { isTauriRuntime } from './db'
 
 export interface ImageEngineStatus {
   available: boolean
@@ -14,10 +15,14 @@ export interface ImageModelImportInfo {
 }
 
 export function imageEngineStatus(): Promise<ImageEngineStatus> {
+  if (!isTauriRuntime()) {
+    return Promise.resolve({ available: false, busy: false, warm_model: null })
+  }
   return invoke('image_engine_status')
 }
 
 export function stopImageEngine(): Promise<void> {
+  if (!isTauriRuntime()) return Promise.resolve()
   return invoke('stop_image_engine')
 }
 

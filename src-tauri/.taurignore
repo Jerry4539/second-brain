@@ -1,0 +1,6 @@
+resources/
+resources/**
+test-model/
+test-model/**
+target/
+

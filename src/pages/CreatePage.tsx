@@ -28,6 +28,7 @@ import {
 import { ImageGenerationHud } from '../components/create/ImageGenerationHud'
 import {
   deleteImage,
+  getSetting,
   insertImage,
   listImages,
   listModels,
@@ -54,7 +55,8 @@ export function CreatePage() {
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
   const [presetIndex, setPresetIndex] = useState(0)
-  const [steps, setSteps] = useState(4)
+  const [steps, setSteps] = useState(6)
+  const [savedStepPref, setSavedStepPref] = useState<number | null>(null)
   const [cfgScaleInput, setCfgScaleInput] = useState('')
   const [seedInput, setSeedInput] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -75,11 +77,28 @@ export function CreatePage() {
   }, [location.state])
 
   useEffect(() => {
-    listModels('image').then((list) => {
-      setModels(list)
-      const defaultModel = list.find((m) => m.is_default === 1) ?? list[0]
-      if (defaultModel) setModelId(defaultModel.id)
-    })
+    Promise.all([
+      listModels('image'),
+      getSetting('image_gen_steps'),
+      getSetting('image_gen_resolution'),
+      getSetting('image_gen_cfg'),
+    ])
+      .then(([list, storedSteps, storedRes, storedCfg]) => {
+        setModels(list)
+        const defaultModel = list.find((m) => m.is_default === 1) ?? list[0]
+        if (defaultModel) setModelId(defaultModel.id)
+        if (storedSteps && !isNaN(Number(storedSteps))) {
+          const parsed = Math.max(2, Math.min(30, Number(storedSteps)))
+          setSavedStepPref(parsed)
+          setSteps(parsed)
+        }
+        if (storedRes === '384') setPresetIndex(1)
+        else if (storedRes === '512') setPresetIndex(0)
+        if (storedCfg) setCfgScaleInput(storedCfg)
+      })
+      .catch(() => {
+        setModels([])
+      })
     refreshHistory()
   }, [])
 
@@ -96,23 +115,29 @@ export function CreatePage() {
   const isFastModel = isLcm || isTurbo
 
   useEffect(() => {
-    if (selectedModel) setSteps(isFastModel ? 6 : 20)
+    if (selectedModel) {
+      setSteps(savedStepPref ?? (isFastModel ? 6 : 20))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelId, isFastModel])
+  }, [modelId, isFastModel, savedStepPref])
 
   async function refreshHistory() {
-    const images = await listImages(12)
-    setHistory(images)
-    const entries = await Promise.all(
-      images.map(async (image) => {
-        try {
-          return [image.id, await readImageDataUrl(image.file_path)] as const
-        } catch {
-          return [image.id, ''] as const
-        }
-      }),
-    )
-    setHistoryThumbs(Object.fromEntries(entries))
+    try {
+      const images = await listImages(12)
+      setHistory(images)
+      const entries = await Promise.all(
+        images.map(async (image) => {
+          try {
+            return [image.id, await readImageDataUrl(image.file_path)] as const
+          } catch {
+            return [image.id, ''] as const
+          }
+        }),
+      )
+      setHistoryThumbs(Object.fromEntries(entries))
+    } catch {
+      setHistory([])
+    }
   }
 
   async function handleGenerate() {
@@ -141,11 +166,11 @@ export function CreatePage() {
 
     const parsedCfg = cfgScaleInput.trim() ? parseFloat(cfgScaleInput.trim()) : NaN
     const customCfg = !isNaN(parsedCfg) && parsedCfg > 0 ? parsedCfg : undefined
-    const defaultCfg = modelIsLcm ? 1.8 : modelIsTurbo ? 1.5 : 7.0
+    const defaultCfg = modelIsLcm || modelIsTurbo ? 1.0 : 7.0
     const finalCfg = customCfg ?? defaultCfg
 
     const DEFAULT_NEGATIVE_PROMPT =
-      'deformed, distorted, disfigured, poorly drawn, bad anatomy, mutated, extra limbs, blurry, out of focus, duplicate, low quality, artifacts'
+      'ugly, deformed, noisy, blurry, low contrast, oversaturated, grainy, pixelated, bad anatomy, mutated, extra limbs, artifacts'
     const finalNegativePrompt = negativePrompt.trim() || DEFAULT_NEGATIVE_PROMPT
 
     setGenerating(true)
