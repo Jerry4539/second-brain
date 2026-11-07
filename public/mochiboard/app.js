@@ -2347,10 +2347,30 @@
   let deselectAt = 0;
   const snapTo = v => settings.snap ? Math.round(v / 26) * 26 : v;
   $('revealBoards').onclick = () => MB.reveal();
-  let sayT = 0;
-  // the little extras: skipped when she's set to Quiet
-  function chirp(text, ms, acts) { if (settings.chat !== 'quiet') say(text, ms, acts); }
-  function tip(text) { if (settings.chat === 'chatty') say(text, 6000); }
+  let sayT = 0, chirpT = 0;
+  // Floating canvas toasts for quick hints & tool actions (never hidden under chat)
+  function chirp(text, ms = 2800, acts = []) {
+    if (settings.chat === 'quiet') return;
+    const toast = $('canvasToast');
+    if (toast) {
+      clearTimeout(chirpT);
+      toast.innerHTML = `<span>${esc(noOrphan(text))}</span>`;
+      if (acts?.length) {
+        acts.forEach(a => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = a.label;
+          b.onclick = () => { toast.classList.remove('on'); if (typeof a.run === 'function') a.run(); };
+          toast.appendChild(b);
+        });
+      }
+      toast.classList.add('on');
+      chirpT = setTimeout(() => toast.classList.remove('on'), ms);
+      return;
+    }
+    say(text, ms, acts);
+  }
+  function tip(text) { if (settings.chat === 'chatty') chirp(text, 5000); }
   function say(text, ms = 6000, acts = []) {
     if (chatOpen()) {
       $('mBubble').classList.remove('on');
@@ -2445,8 +2465,15 @@
     if (!settings.ai) return offlineMochi(q, "My thinking is switched off in Settings, so I can only do simple tidying.");
     if (!confirmed && /\b(site ?map|page tree|journey map|customer path|experience map|mind ?map|brainstorm map)\b/i.test(q) && offlineRecipe(q)) return;
     $('mochi').classList.add('thinking'); goo.think(true); favGoo?.think(true); typing(true, confirmed ? 'making it' : doingLabel(q));
-    try { const raw = await MB.ask((window.mochiName && window.mochiName !== 'Mochi' ? `(The person named you ${window.mochiName}. That's your name now; sign off and refer to yourself that way.) ` : '') + q, snapshot(), confirmed, { mobbin: settings.mobbin, higgs: settings.higgs }); await applyMochi(parse(raw), q); }
-    catch (err) { say("Hmm, I ran into a hiccup: " + err.message); }
+    try {
+      const raw = await MB.ask((window.mochiName && window.mochiName !== 'Mochi' ? `(The person named you ${window.mochiName}. That's your name now; sign off and refer to yourself that way.) ` : '') + q, snapshot(), confirmed, { mobbin: settings.mobbin, higgs: settings.higgs });
+      typing(false);
+      await applyMochi(parse(raw), q);
+    }
+    catch (err) {
+      typing(false);
+      say("Hmm, I ran into a hiccup: " + err.message);
+    }
     finally { $('mochi').classList.remove('thinking'); goo.think(false); favGoo?.think(false); typing(false); }
   }
   // ---------- feedback to Jessa: write it here, see exactly what goes out, then send. No Claude needed ----------

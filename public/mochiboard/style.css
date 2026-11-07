@@ -747,6 +747,48 @@ body.dark .tray-head b, body.dark .sb-dots button, body.dark .tile .mf { color: 
 .mc-btn { border: 0; background: none; padding: 6px 9px; border-radius: 999px; font: 600 11.5px/1 var(--font); color: var(--ink-soft); cursor: pointer; }
 .mc-btn:hover { background: var(--blush); color: var(--ink); }
 .mc-btn.x { font-size: 18px; padding: 2px 9px; }
+/* Sleek floating canvas toast for hints, chirps, and actions */
+.canvas-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-12px) scale(.96);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(30, 27, 36, .94);
+  color: #fff;
+  font: 600 13px/1.3 var(--font);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease, transform .24s cubic-bezier(.2, .9, .3, 1.2);
+  white-space: nowrap;
+}
+.canvas-toast.on {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+.canvas-toast button {
+  border: 1px solid rgba(255, 255, 255, .25);
+  background: rgba(255, 255, 255, .12);
+  color: #ff9ec4;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 600 11.5px/1.2 var(--font);
+  cursor: pointer;
+}
+.canvas-toast button:hover {
+  background: rgba(255, 255, 255, .22);
+  color: #fff;
+}
+
 .mc-list {
   flex: 1 1 auto;
   min-height: 0;
@@ -767,7 +809,12 @@ body.dark .tray-head b, body.dark .sb-dots button, body.dark .tile .mf { color: 
 }
 .mc-msg {
   position: relative;
+  display: block;
   box-sizing: border-box;
+  clear: both;
+  float: none;
+  margin-top: 0;
+  margin-bottom: 0;
   padding: 10px 14px;
   border-radius: 18px;
   font: 400 13.5px/1.45 var(--font);
@@ -775,6 +822,9 @@ body.dark .tray-head b, body.dark .sb-dots button, body.dark .tile .mf { color: 
   word-break: break-word;
   animation: mc-in .25s cubic-bezier(.2, .9, .3, 1.2);
   flex: none;
+}
+.mc-msg + .mc-msg {
+  margin-top: 10px !important;
 }
 .mc-msg.mochi {
   align-self: flex-start;
