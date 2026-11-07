@@ -149,6 +149,8 @@ body.dark .card .chip { background: rgba(40, 37, 46, .94); color: #f3eef6; box-s
 .mochi.thinking .m-name::after { content: " · thinking…"; color: #7fd8ff; }
 .m-bubble { max-width: 460px; margin-bottom: 12px; padding: 12px 16px 14px; border-radius: 20px; background: rgba(40, 40, 48, .94); color: #fff; font-size: 14px; line-height: 1.5; box-shadow: 0 12px 30px rgba(40, 20, 60, .25); opacity: 0; transform: translateY(8px); transition: opacity .3s, transform .35s cubic-bezier(.2, .8, .3, 1); pointer-events: none; }
 .m-bubble.on { opacity: 1; transform: none; pointer-events: auto; }
+.mochi.chat .m-bubble,
+.mochi.chat .m-bubble.on { display: none !important; opacity: 0 !important; pointer-events: none !important; visibility: hidden !important; }
 .m-bubble small { display: block; margin-bottom: 6px; font: 700 10px/1 var(--font); letter-spacing: .14em; text-transform: uppercase; color: #7fd8ff; }
 .m-bubble p { margin: 0; white-space: pre-wrap; }
 
@@ -2821,6 +2823,49 @@ body:not(.phone) #mochi .m-bubble {
   width: max-content !important;
   max-width: min(420px, calc(100vw - 36px)) !important;
 }
+body:not(.phone) #mochi.chat .m-bubble,
+body:not(.phone) #mochi.chat .m-bubble.on {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Mascot pill sizing: when chat is inactive, show mascot icon only (bigger, cute badge). When chat is open, expand with 'Second Brain' label */
+.m-pill {
+  width: 54px !important;
+  height: 54px !important;
+  padding: 0 !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  transition: all .25s cubic-bezier(.2, .9, .3, 1.2) !important;
+  overflow: visible !important;
+}
+.m-pill canvas.pm-mascot-cv {
+  width: 48px !important;
+  height: 48px !important;
+  transform: translateY(-2px) !important;
+  flex: none !important;
+}
+.m-pill .m-name {
+  display: none !important;
+}
+.mochi.chat .m-pill {
+  width: auto !important;
+  height: 52px !important;
+  padding: 0 18px 0 12px !important;
+  border-radius: 999px !important;
+}
+.mochi.chat .m-pill canvas.pm-mascot-cv {
+  width: 42px !important;
+  height: 42px !important;
+  transform: translateY(-1px) !important;
+}
+.mochi.chat .m-pill .m-name {
+  display: inline-block !important;
+  margin-left: 6px !important;
+}
+
 body.clean #mochi, body.exporting #mochi, .stage.doc-open #mochi .m-pill { opacity: 0; pointer-events: none; }
 body:not(.phone):has(#mochi.chat) #sideR { z-index: 0; opacity: .15; pointer-events: none; transition: opacity .2s ease; }
 .mc-msg .m-acts button { position: relative; z-index: 2; pointer-events: auto; cursor: pointer; }

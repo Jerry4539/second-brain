@@ -2352,14 +2352,25 @@
   function chirp(text, ms, acts) { if (settings.chat !== 'quiet') say(text, ms, acts); }
   function tip(text) { if (settings.chat === 'chatty') say(text, 6000); }
   function say(text, ms = 6000, acts = []) {
-    if (chatOpen()) { if (text) addMsg('mochi', text, acts); return; }
+    if (chatOpen()) {
+      $('mBubble').classList.remove('on');
+      if (text) addMsg('mochi', text, acts);
+      return;
+    }
     $('mSay').textContent = noOrphan(text); $('mActs').innerHTML = '';
     acts.forEach(a => { const b = document.createElement('button'); b.textContent = a.label; b.className = a.cls || (a.ghost ? 'ghost' : ''); b.onclick = () => { $('mBubble').classList.remove('on'); a.run(); }; $('mActs').appendChild(b); });
     $('mBubble').classList.add('on'); hopMochi(); clearTimeout(sayT); if (ms) sayT = setTimeout(() => $('mBubble').classList.remove('on'), ms);
   }
   // ---------- Mochi's chat window: click her to open it, click again (or Esc) to close ----------
   const chatOpen = () => $('mochi').classList.contains('chat');
-  function mochiOpen(on) { $('mochi').classList.toggle('chat', on); if (on) { $('mBubble').classList.remove('on'); renderChat(); $('mcInput').focus(); } }
+  function mochiOpen(on) {
+    $('mochi').classList.toggle('chat', on);
+    $('mBubble').classList.remove('on');
+    if (on) {
+      renderChat();
+      $('mcInput').focus();
+    }
+  }
   $('mPill').onclick = () => mochiOpen(!chatOpen());
   $('mcClose').onclick = () => mochiOpen(false);
   $('mcNew').onclick = () => { chatLog().length = 0; if (settings.chatKeep === 'board') { board.chat = []; save(); } renderChat(); $('mcInput').focus(); };
