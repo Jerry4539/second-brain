@@ -120,14 +120,9 @@ window.mochiWearing = () => Object.assign({}, window.MochiOutfit || {}, window.M
         height: 34px !important;
         margin-top: -1px !important;
       }
-      .m-pill canvas.pm-mascot-cv {
-        width: 42px !important;
-        height: 42px !important;
-        transform: translateY(-1px);
-      }
       .mc-head canvas.pm-mascot-cv {
-        width: 34px !important;
-        height: 34px !important;
+        width: 32px !important;
+        height: 32px !important;
         margin-top: -1px !important;
       }
       canvas.pm-mascot-cv.pm-booping {

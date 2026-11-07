@@ -639,7 +639,7 @@
 
   // ---------- rendering ----------
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const cleanBrand = s => String(s ?? '').replace(/\bMochiboard\b/g, 'Second Brain').replace(/\bMochi\b/g, 'Second Brain');
+  const cleanBrand = s => String(s ?? '').replace(/\bMochiboard\b/gi, 'Second Brain').replace(/\bMochi\b/gi, 'Second Brain');
   function inner(c) {
     switch (c.type) {
       case 'note': return `${c.mochi ? `<div class="nm-head"><img class="nmochi" src="stamps/mochi-wave.png" alt=""><div class="nname">${esc(cleanBrand(c.name || ''))}</div></div>` : c.name !== undefined ? `<div class="nname">${esc(cleanBrand(c.name))}</div>` : ''}<div class="text">${esc(cleanBrand(c.text))}</div>`;
@@ -2430,8 +2430,8 @@
   const GUIDE = 'https://mochiboard.app/connect.html';   // the step-by-step page for connecting Claude Code
   const SIGNIN = /log ?in|api key|auth|credential|subscription|not (signed|logged)|oauth|unauthori[sz]ed|401|403/i;
   // the web demo: Mochi tidies for real, and for anything that needs AI she points you to the Mac app
-  const getApp = () => MB.openURL(MB.getURL || 'https://github.com/jessawolfe-ux/mochiboard/releases/latest/download/Mochiboard.zip');
-  const DL = [{ label: 'Download Mochiboard ✦', run: getApp }, { label: 'Keep playing', ghost: true, run: () => {} }];
+  const getApp = () => MB.openURL(MB.getURL || 'https://github.com/Jerry4539/second-brain/releases');
+  const DL = [{ label: 'Download Second Brain ✦', run: getApp }, { label: 'Keep playing', ghost: true, run: () => {} }];
   function webMochi(q) {
     if (offlineRecipe(q) || learnAnswer(q)) return;   // building beats explaining: "make a sitemap" builds one, "what is a sitemap" explains it
     const notes = board.cards.filter(c => c.type === 'note' && !parentOf(c.id));
@@ -2464,7 +2464,7 @@
     const o = { kind: fbKind, message: $('fbsMsg').value.trim() }, mail = $('fbsEmail').value.trim(), nm = $('fbsName').value.trim(), role = $('fbsRole').value.trim();
     if (mail) o.email = mail;
     if ($('fbsCredit').checked && nm) { o.credit_name = nm; if (role) o.credit_role = role; }
-    o.version = v || Object.keys(NEWS).pop(); o.computer = { mac: 'Mac', windows: 'Windows', linux: 'Linux' }[OS] || 'Web'; o.page = 'Mochiboard app';
+    o.version = v || Object.keys(NEWS).pop(); o.computer = { mac: 'Mac', windows: 'Windows', linux: 'Linux' }[OS] || 'Web'; o.page = 'Second Brain app';
     return o;
   }
   const FB_LABEL = { kind: 'Kind', message: 'Note', email: 'Reply to', credit_name: 'Thank me as', credit_role: 'Role', version: 'Version', computer: 'Computer', page: 'Sent from' };
@@ -2498,7 +2498,7 @@
     if (!navigator.onLine) { $('fbsStatus').textContent = "You're offline. Your note is still here; send it when you're back."; return; }
     $('fbsNext').disabled = true; $('fbsStatus').textContent = 'Sending…';
     try {
-      const r = await fetch(FB_URL, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ ...o, _subject: 'Mochiboard feedback ✦' }) });
+      const r = await fetch(FB_URL, { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ ...o, _subject: 'Second Brain feedback ✦' }) });
       if (!r.ok) throw new Error(r.status);
       ['fbsMsg', 'fbsEmail', 'fbsName', 'fbsRole'].forEach(id => $(id).value = ''); $('fbsCredit').checked = false; $('fbsCreditRow').hidden = true;
       $('fbsStatus').textContent = 'Sent ✦ Thank you!'; setTimeout(closeFeedback, 1200);
@@ -6186,7 +6186,7 @@ ${proseCSS()}
     ['<circle cx="10" cy="10" r="7"/><path d="M6.2 8.2c2.6-.8 5.2-.6 7.6.6M6.7 10.8c2-.6 4.2-.4 6 .5M7.3 13.2c1.6-.4 3.1-.3 4.5.4"/>', 'Spotify on your board', 'Paste a Spotify link and it becomes a real player. Songs, playlists, podcasts.'],
     ['<circle cx="8.5" cy="8.5" r="5"/><path d="M12.2 12.2l4.3 4.3M8.5 6.5v4M6.5 8.5h4"/>', 'Sharp at any zoom', 'Text and pictures stay crisp however close you get, and zooming is smoother.'],
     ['<rect x="2.5" y="5.5" width="10" height="9" rx="2"/><path d="M12.5 9l5-2.5v7l-5-2.5"/>', 'Pick your camera and mic', 'Choose them in Settings, or from the little menu on video and voice memo cards.'],
-    ['<rect x="2.5" y="3.5" width="15" height="10" rx="1.6"/><path d="M7 16.5h6M10 13.5v3"/>', 'Mochiboard for Windows', 'Share it with friends on a PC. Same board, Ctrl shortcuts, and memos written out right on the computer.'],
+    ['<rect x="2.5" y="3.5" width="15" height="10" rx="1.6"/><path d="M7 16.5h6M10 13.5v3"/>', 'Second Brain for Windows', 'Share it with friends on a PC. Same board, Ctrl shortcuts, and memos written out right on the computer.'],
   ], '1.6.0': [
     ['<rect x="2.5" y="3" width="6" height="14" rx="1.6"/><rect x="11.5" y="3" width="6" height="6" rx="1.6"/><rect x="11.5" y="11" width="6" height="6" rx="1.6"/>', 'Make the sidebars yours', 'Drag any widget by its title to either side, and turn off the ones you don’t use.'],
     ['<path d="M7 4.5c1.5 1.6 4.5 1.6 6 0l3 2-1.5 3.5H13V16H7V10H5.5L4 6.5z"/>', 'Dress up Mochi', 'A closet full of hats, glasses and more. She wears her outfit everywhere.'],
