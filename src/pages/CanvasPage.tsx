@@ -181,7 +181,7 @@ export function CanvasPage() {
     <div className="relative h-full w-full overflow-hidden bg-[#131118]">
       <iframe
         ref={iframeRef}
-        src="/mochiboard/index.html?v=sb16"
+        src="/mochiboard/index.html?v=sb17"
         title="Canvas"
         className="h-full w-full border-0"
         allow="microphone; camera; clipboard-read; clipboard-write"
