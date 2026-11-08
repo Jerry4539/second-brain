@@ -2403,13 +2403,66 @@
     }
     return s;
   };
+  const formatTime = ts => {
+    try {
+      const d = ts ? new Date(ts) : new Date();
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
   function msgEl(m) {
-    const d = document.createElement('div'); d.className = 'mc-msg ' + m.who; d.textContent = cleanMsgText(m.text);
+    const row = document.createElement('div');
+    row.className = 'mc-row ' + m.who;
+
+    const d = document.createElement('div');
+    d.className = 'mc-msg ' + m.who;
+
+    if (m.who === 'mochi') {
+      const author = document.createElement('div');
+      author.className = 'mc-msg-author';
+      author.textContent = 'Second Brain';
+      d.appendChild(author);
+    }
+
+    const textEl = document.createElement('div');
+    textEl.className = 'mc-msg-text';
+    textEl.textContent = cleanMsgText(m.text);
+    d.appendChild(textEl);
+
     const list = (m.acts?.length ? m.acts : (Array.isArray(m.next) && m.next.length ? m.next.map(t => ({ label: t, cls: 'next', run: () => ask(t) })) : []))
       .filter(a => a && a.label && !/Follow-up suggestion/i.test(a.label));
-    if (list.length) { const box = document.createElement('div'); box.className = 'm-acts';
-      list.forEach(a => { const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label; b.className = a.cls || (a.ghost ? 'ghost' : ''); b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); box.remove(); if (m.next) delete m.next; if (typeof a.run === 'function') a.run(); else if (a.label) ask(a.label); }; box.appendChild(b); }); d.appendChild(box); }
-    return d;
+    if (list.length) {
+      const box = document.createElement('div');
+      box.className = 'm-acts';
+      list.forEach(a => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = a.label;
+        b.className = a.cls || (a.ghost ? 'ghost' : '');
+        b.onclick = ev => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          box.remove();
+          if (m.next) delete m.next;
+          if (typeof a.run === 'function') a.run();
+          else if (a.label) ask(a.label);
+        };
+        box.appendChild(b);
+      });
+      d.appendChild(box);
+    }
+
+    const meta = document.createElement('div');
+    meta.className = 'mc-msg-meta';
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'mc-msg-time';
+    timeSpan.textContent = formatTime(m.t);
+    meta.appendChild(timeSpan);
+    d.appendChild(meta);
+
+    row.appendChild(d);
+    return row;
   }
   function renderChat() {
     const list = $('mcList'); list.innerHTML = ''; const msgs = chatLog();
@@ -2429,8 +2482,23 @@
     log.push(m); if (log.length > max) log.splice(0, log.length - max); if (settings.chatKeep === 'board') save();
     const list = $('mcList'); list.querySelector('.mc-empty')?.remove(); list.appendChild(msgEl({ ...m, acts })); list.scrollTop = list.scrollHeight;
   }
-  function typing(on, label) { $('mcList').querySelector('.typing')?.remove(); clearTimeout(doingTimer); $('mcStatus').textContent = on ? (label || 'thinking') + '…' : '';
-    if (on) { const d = document.createElement('div'); d.className = 'mc-msg mochi typing'; d.innerHTML = '<i></i><i></i><i></i><span></span>'; $('mcList').appendChild(d); $('mcList').scrollTop = 1e9; showDoing(label || 'thinking'); } }
+  function typing(on, label) {
+    $('mcList').querySelector('.typing-row')?.remove();
+    $('mcList').querySelector('.typing')?.remove();
+    clearTimeout(doingTimer);
+    $('mcStatus').textContent = on ? (label || 'thinking') + '…' : '';
+    if (on) {
+      const row = document.createElement('div');
+      row.className = 'mc-row mochi typing-row';
+      const d = document.createElement('div');
+      d.className = 'mc-msg mochi typing';
+      d.innerHTML = '<i></i><i></i><i></i><span></span>';
+      row.appendChild(d);
+      $('mcList').appendChild(row);
+      $('mcList').scrollTop = 1e9;
+      showDoing(label || 'thinking');
+    }
+  }
   $('mcForm').onsubmit = e => { e.preventDefault(); const q = $('mcInput').value.trim(); if (!q) return; $('mcInput').value = ''; $('mcInput').style.height = ''; $('mcInput').placeholder = 'Ask Second Brain… “group these by theme”'; ask(q); };
   $('mcInput').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('mcForm').requestSubmit(); } if (e.key === 'Escape') { mochiOpen(false); e.stopPropagation(); } };
   $('mcInput').oninput = () => { const t = $('mcInput'); t.style.height = 'auto'; t.style.height = Math.min(120, t.scrollHeight) + 'px'; };
