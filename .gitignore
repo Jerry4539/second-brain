@@ -48,6 +48,8 @@ src-tauri/target/
 /*.png
 /*.txt
 !src-tauri/icons/*.png
+*.dmg
+release/
 app_err.log
 app_out.log
 stderr.log
