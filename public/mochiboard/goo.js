@@ -188,6 +188,43 @@ window.mochiWearing = () => Object.assign({}, window.MochiOutfit || {}, window.M
     let thinkInterval = null;
 
     function render() {
+      let mascotChoice = 'cap';
+      try {
+        mascotChoice = localStorage.getItem('second-brain-mascot-choice') || 'cap';
+      } catch {}
+
+      if (mascotChoice === 'mochi') {
+        canvas.style.backgroundImage = 'url("/mochiboard/stamps/mochi-happy.png")';
+        canvas.style.backgroundSize = 'contain';
+        canvas.style.backgroundPosition = 'center';
+        canvas.style.backgroundRepeat = 'no-repeat';
+        return;
+      }
+      if (mascotChoice === 'bot') {
+        canvas.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'><rect width=\'40\' height=\'40\' rx=\'12\' fill=\'%2318181b\'/><circle cx=\'14\' cy=\'20\' r=\'4\' fill=\'%2306b6d4\'/><circle cx=\'26\' cy=\'20\' r=\'4\' fill=\'%2306b6d4\'/><path d=\'M14 28 h12\' stroke=\'%2306b6d4\' stroke-width=\'2\' stroke-linecap=\'round\'/><circle cx=\'20\' cy=\'8\' r=\'2.5\' fill=\'%23a1a1aa\'/></svg>")';
+        canvas.style.backgroundSize = 'contain';
+        canvas.style.backgroundPosition = 'center';
+        canvas.style.backgroundRepeat = 'no-repeat';
+        return;
+      }
+      if (mascotChoice === 'fox') {
+        canvas.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'><rect width=\'40\' height=\'40\' rx=\'12\' fill=\'%23ea580c\'/><polygon points=\'8,8 14,22 6,20\' fill=\'%23ffffff\'/><polygon points=\'32,8 26,22 34,20\' fill=\'%23ffffff\'/><circle cx=\'14\' cy=\'22\' r=\'2.5\' fill=\'%2318181b\'/><circle cx=\'26\' cy=\'22\' r=\'2.5\' fill=\'%2318181b\'/><polygon points=\'20,25 17,29 23,29\' fill=\'%2318181b\'/></svg>")';
+        canvas.style.backgroundSize = 'contain';
+        canvas.style.backgroundPosition = 'center';
+        canvas.style.backgroundRepeat = 'no-repeat';
+        return;
+      }
+      if (mascotChoice === 'cat') {
+        canvas.style.backgroundImage = 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 40 40\'><rect width=\'40\' height=\'40\' rx=\'12\' fill=\'%238b5cf6\'/><polygon points=\'8,8 14,20 6,18\' fill=\'%23c4b5fd\'/><polygon points=\'32,8 26,20 34,18\' fill=\'%23c4b5fd\'/><ellipse cx=\'14\' cy=\'21\' rx=\'2.5\' ry=\'3\' fill=\'%23fde047\'/><ellipse cx=\'26\' cy=\'21\' rx=\'2.5\' ry=\'3\' fill=\'%23fde047\'/><circle cx=\'14\' cy=\'21\' r=\'1.2\' fill=\'%2318181b\'/><circle cx=\'26\' cy=\'21\' r=\'1.2\' fill=\'%2318181b\'/><path d=\'M17 26 q3 2 6 0\' stroke=\'%23ffffff\' stroke-width=\'1.5\' fill=\'none\' stroke-linecap=\'round\'/></svg>")';
+        canvas.style.backgroundSize = 'contain';
+        canvas.style.backgroundPosition = 'center';
+        canvas.style.backgroundRepeat = 'no-repeat';
+        return;
+      }
+
+      // Default 'cap' sprite sheet
+      canvas.style.backgroundSize = '300% 300%';
+      canvas.style.backgroundRepeat = 'no-repeat';
       const showingReaction = reaction !== null;
       const sheet = showingReaction ? REACT_URL : DIR_URL;
       const frameIndex = showingReaction
@@ -197,6 +234,11 @@ window.mochiWearing = () => Object.assign({}, window.MochiOutfit || {}, window.M
       canvas.style.backgroundImage = `url("${sheet}")`;
       canvas.style.backgroundPosition = sheetPosition(frameIndex);
     }
+
+    window.addEventListener('second-brain-mascot-change', () => render());
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'second-brain-mascot-choice' || e.key === 'mochiboard:settings') render();
+    });
 
     function clearTimers() {
       timers.forEach((t) => clearTimeout(t));

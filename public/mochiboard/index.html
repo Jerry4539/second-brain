@@ -452,6 +452,22 @@
         <div class="set-row"><div><b>Cursor color</b><small>Pick one, or tap the last dot for any color</small></div><div class="mochi-colors cur-colors" id="curColors"></div></div>
         <label class="set-row"><div><b>Canvas cursor</b><small>Off uses your Mac’s regular cursor</small></div><input type="checkbox" class="tgl" data-set="fancyCursor"></label>
       </section>
+      <section class="set-devices" data-tab="general">
+        <h3>Boards &amp; Devices</h3>
+        <div class="set-row native-only">
+          <div><b>Saved boards</b><small id="boardCount">Your boards never leave your computer</small></div>
+          <button class="set-btn" id="revealBoards">Show in Finder</button>
+        </div>
+        <div class="set-row">
+          <div><b>Camera</b><small>For video cards</small></div>
+          <select class="dev-sel" id="devCam" aria-label="Camera"></select>
+        </div>
+        <div class="set-row">
+          <div><b>Microphone</b><small>For voice memos and videos</small></div>
+          <select class="dev-sel" id="devMic" aria-label="Microphone"></select>
+        </div>
+        <button class="set-btn" id="devAllow" hidden>Show my devices</button>
+      </section>
       <section data-tab="mochi"><h3>Second Brain Assistant</h3>
         <div class="set-row"><div><b>Assistant name</b><small>Customize how your assistant is labeled in the dock and chat.</small></div><input class="set-input" id="mochiNameIn" maxlength="18" placeholder="Second Brain" autocomplete="off" spellcheck="false"></div>
         <div class="set-row"><div><b>Mascot motion</b><small>Lively tracks your cursor and reacts; Calm sits still.</small></div><div class="seg" data-seg="mochiCalm"><button data-v="lively">Lively</button><button data-v="calm">Calm</button><button data-v="calmest">Calmest</button></div></div>
@@ -594,17 +610,10 @@
         <label class="set-row"><div><b>Rounded corners on new pictures</b><small>Pictures you pull in start with soft corners. Off starts them square; the Corners menu can still round any picture.</small></div><input type="checkbox" class="tgl" data-set="imgRadius"></label>
         <label class="set-row"><div><b>Image hints on board</b><small>Little tips when you hover a picture or a placeholder. Off once you know your way around.</small></div><input type="checkbox" class="tgl" data-set="hints"></label>
       </section>
-      <section data-tab="general"><h3>Your boards</h3>
-        <div class="set-row native-only"><div><b>Saved on this Mac</b><small id="boardCount">Your boards never leave your computer</small></div><button class="set-btn" id="revealBoards">Show in Finder</button></div>
-      </section>
       <section data-tab="toolbar"><h3>Toolbar</h3>
         <div class="set-row"><div><b>Icon size</b><small>How big the tools at the bottom are. If they don't all fit on your screen, the extras tuck into a ··· menu at the end.</small></div><div class="seg" data-seg="tbSize"><button data-v="s">Small</button><button data-v="m">Medium</button><button data-v="l">Large</button></div></div>
         <div class="set-row"><div><b>Your tools</b><small>Switch tools on or off, and drag to change their order. Shortcuts still work for tools you hide.</small></div><button class="set-btn" id="tbReset">Reset</button></div>
         <div class="tbe-list set-tblist" id="setTbList"></div></section>
-      <section class="set-devices" data-tab="general"><h3>Camera &amp; microphone</h3>
-        <div class="set-row"><div><b>Camera</b><small>For video cards</small></div><select class="dev-sel" id="devCam" aria-label="Camera"></select></div>
-        <div class="set-row"><div><b>Microphone</b><small>For voice memos and videos</small></div><select class="dev-sel" id="devMic" aria-label="Microphone"></select></div>
-        <button class="set-btn" id="devAllow" hidden>Show my devices</button></section>
       <!-- Hidden compatibility nodes so app.js listeners never fail -->
       <div hidden style="display:none !important">
         <canvas id="aboutGoo" width="40" height="36"></canvas>

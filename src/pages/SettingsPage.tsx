@@ -158,6 +158,49 @@ const SAMPLER_PRESETS = [
   { value: 'dpm++2m', label: 'DPM++ 2M Karras', badge: '12–20 Steps' },
 ] as const
 
+const MASCOT_OPTIONS = [
+  {
+    id: 'cap',
+    name: 'Ash / Red Cap',
+    badge: 'Interactive Sprite',
+    desc: 'Animated 8-way eye tracking and joyful click reactions',
+    avatar: '/mascots/cap-directions.webp',
+    type: 'sprite',
+  },
+  {
+    id: 'mochi',
+    name: 'Mochi Blob',
+    badge: 'Soft & Calm',
+    desc: 'Original squishy pastel mascot with cute emotes',
+    avatar: '/mochiboard/stamps/mochi-happy.png',
+    type: 'image',
+  },
+  {
+    id: 'bot',
+    name: 'Cyber Bot',
+    badge: 'Neon AI',
+    desc: 'Futuristic synthetic assistant with glowing cyan optics',
+    icon: '🤖',
+    type: 'emoji',
+  },
+  {
+    id: 'fox',
+    name: 'Kitsune Fox',
+    badge: 'Clever Spirit',
+    desc: 'Sharp, creative spirit companion with fiery eyes',
+    icon: '🦊',
+    type: 'emoji',
+  },
+  {
+    id: 'cat',
+    name: 'Cosmo Neko',
+    badge: 'Starlight Cat',
+    desc: 'Playful cosmic cat that purrs while you design',
+    icon: '🐱',
+    type: 'emoji',
+  },
+] as const
+
 export function SettingsPage() {
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('all')
   const [aboutOpen, setAboutOpen] = useState(false)
@@ -179,6 +222,9 @@ export function SettingsPage() {
   const [imgFlashAttn, setImgFlashAttn] = useState<boolean>(true)
 
   // Canvas & Mascot Co-Pilot Preferences (synced with mochiboard:settings)
+  const [mascotChoice, setMascotChoice] = useState<string>(() => {
+    return localStorage.getItem('second-brain-mascot-choice') || 'cap'
+  })
   const [mascotCalm, setMascotCalm] = useState<'lively' | 'calm' | 'calmest'>('lively')
   const [mascotChatStyle, setMascotChatStyle] = useState<'quiet' | 'normal' | 'chatty'>('normal')
   const [canvasSnap, setCanvasSnap] = useState<boolean>(false)
@@ -256,6 +302,7 @@ export function SettingsPage() {
           const rawCanvas = localStorage.getItem('mochiboard:settings')
           if (rawCanvas) {
             const parsed = JSON.parse(rawCanvas)
+            if (parsed.mascotChoice) setMascotChoice(parsed.mascotChoice)
             if (parsed.mochiCalm) setMascotCalm(parsed.mochiCalm)
             if (parsed.chat) setMascotChatStyle(parsed.chat)
             if (typeof parsed.snap === 'boolean') setCanvasSnap(parsed.snap)
@@ -810,13 +857,86 @@ export function SettingsPage() {
         {/* ----------------------------------------------------------------- */}
         {showSection('canvas') && (
           <BentoCard
-            className="md:col-span-6 lg:col-span-5"
+            className={activeCategory === 'canvas' ? 'col-span-12' : 'col-span-12 lg:col-span-5'}
             title="Infinite Canvas & Mascot Co-Pilot"
             subtitle="Customize the bottom-right Second Brain mascot, infinite board physics, and cursor feel."
             icon={Layers}
             badge={<Badge tone="accent">Bottom-Right Pinned</Badge>}
           >
             <div className="space-y-3">
+              {/* Mascot Character Avatar Selection */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/45 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-[var(--text)]">
+                      Choose Mascot Co-Pilot
+                    </span>
+                    <Badge tone="accent">Active Avatar</Badge>
+                  </div>
+                  <span className="text-[10px] text-[var(--muted)]">Canvas & Sidebar</span>
+                </div>
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  {MASCOT_OPTIONS.map((m) => {
+                    const isSelected = mascotChoice === m.id
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setMascotChoice(m.id)
+                          localStorage.setItem('second-brain-mascot-choice', m.id)
+                          syncCanvasLocalStorage({ mascotChoice: m.id })
+                          window.dispatchEvent(
+                            new CustomEvent('second-brain-mascot-change', { detail: m.id }),
+                          )
+                          showToast(`Mascot set to ${m.name}`, 'success')
+                        }}
+                        className={`flex items-center gap-2.5 rounded-xl border p-2 text-left transition-all ${
+                          isSelected
+                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]'
+                            : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--surface-elevated)]'
+                        }`}
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)]">
+                          {m.type === 'sprite' ? (
+                            <img
+                              src="/mascots/cap-directions.webp"
+                              alt={m.name}
+                              className="h-7 w-7 object-contain"
+                            />
+                          ) : m.type === 'image' ? (
+                            <img
+                              src={m.avatar}
+                              alt={m.name}
+                              className="h-7 w-7 object-contain"
+                            />
+                          ) : (
+                            <span className="text-lg">{m.icon}</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span
+                              className={`truncate text-xs font-bold ${
+                                isSelected ? 'text-[var(--accent)]' : 'text-[var(--text)]'
+                              }`}
+                            >
+                              {m.name}
+                            </span>
+                            <span className="shrink-0 rounded px-1 text-[8.5px] font-semibold bg-[var(--surface-elevated)] text-[var(--muted)]">
+                              {m.badge}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">
+                            {m.desc}
+                          </p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               {/* Mascot Motion */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/45 p-3">
                 <div className="mb-1.5 flex items-center justify-between">
@@ -941,7 +1061,7 @@ export function SettingsPage() {
         {/* ----------------------------------------------------------------- */}
         {showSection('system') && (
           <BentoCard
-            className="md:col-span-6 lg:col-span-7"
+            className={activeCategory === 'system' ? 'col-span-12' : 'col-span-12 lg:col-span-7'}
             title="Autonomous Decision & Reward Policy (RLHF)"
             subtitle="Second Brain learns from your rewards (+10 XP) and implicit actions to adapt how it selects tools and structures answers."
             icon={Trophy}

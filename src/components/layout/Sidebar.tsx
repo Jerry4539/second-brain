@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Mascot } from 'page-mascot'
@@ -10,6 +10,25 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true'
   })
+  const [mascotChoice, setMascotChoice] = useState<string>(() => {
+    return localStorage.getItem('second-brain-mascot-choice') || 'cap'
+  })
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail) setMascotChoice(detail)
+    }
+    window.addEventListener('second-brain-mascot-change', handler)
+    const storageHandler = () => {
+      setMascotChoice(localStorage.getItem('second-brain-mascot-choice') || 'cap')
+    }
+    window.addEventListener('storage', storageHandler)
+    return () => {
+      window.removeEventListener('second-brain-mascot-change', handler)
+      window.removeEventListener('storage', storageHandler)
+    }
+  }, [])
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -33,11 +52,25 @@ export function Sidebar() {
       >
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-            <Mascot
-              directions="/mascots/cap-directions.webp"
-              reactions="/mascots/cap-reactions.webp"
-              size={36}
-            />
+            {mascotChoice === 'cap' ? (
+              <Mascot
+                directions="/mascots/cap-directions.webp"
+                reactions="/mascots/cap-reactions.webp"
+                size={36}
+              />
+            ) : mascotChoice === 'mochi' ? (
+              <img
+                src="/mochiboard/stamps/mochi-happy.png"
+                alt="Mochi Mascot"
+                className="h-8 w-8 object-contain transition-transform hover:scale-110 cursor-pointer"
+              />
+            ) : mascotChoice === 'bot' ? (
+              <span className="text-2xl transition-transform hover:scale-110 cursor-pointer select-none" title="Cyber Bot">🤖</span>
+            ) : mascotChoice === 'fox' ? (
+              <span className="text-2xl transition-transform hover:scale-110 cursor-pointer select-none" title="Kitsune Fox">🦊</span>
+            ) : (
+              <span className="text-2xl transition-transform hover:scale-110 cursor-pointer select-none" title="Cosmo Neko">🐱</span>
+            )}
           </div>
           {!collapsed && (
             <span className="truncate text-sm font-semibold text-[var(--text)]">

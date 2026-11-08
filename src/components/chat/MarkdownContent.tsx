@@ -1141,12 +1141,28 @@ function parseFenceInfo(info: string): { language: string; title?: string } {
   return { language: trimmed.toLowerCase() }
 }
 
+function isPureCodeOrTags(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+
+  // Pure HTML tags, voids, or comments (including </style>, </div>, </form>, </br></br>, <!-- ... -->)
+  const isPureHtml = /^(?:<!--[\s\S]*?-->|<\/?[a-zA-Z0-9_-]+(?:\s+[^>]*)?>|\s*)+$/i.test(trimmed)
+  if (isPureHtml) return true
+
+  // Pure closing braces, brackets or CSS statements
+  if (/^(?:[\s\}\);,]|(?:\/\*[\s\S]*?\*\/))+$/.test(trimmed)) return true
+
+  return false
+}
+
 function detectUnfencedCode(paragraph: string): { isCode: boolean; language: string } {
   const trimmed = paragraph.trim()
-  if (!trimmed || trimmed.length < 15) return { isCode: false, language: '' }
+  if (!trimmed) return { isCode: false, language: '' }
 
-  const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
-  if (lines.length < 2) return { isCode: false, language: '' }
+  // 0. Pure HTML tags (e.g. </style>, </div>, </form>, </br></br>) or pure tag sequences
+  if (isPureCodeOrTags(trimmed)) {
+    return { isCode: true, language: 'html' }
+  }
 
   // 1. CSS / SCSS detection
   const hasMediaOrKeyframes = /@(?:media|keyframes|import|supports|font-face)\b/i.test(trimmed)
@@ -1165,9 +1181,12 @@ function detectUnfencedCode(paragraph: string): { isCode: boolean; language: str
   // 2. HTML / XML / SVG detection
   const hasHtmlDoctypeOrTags = /^<!DOCTYPE\s+html/i.test(trimmed) || /^<(?:html|head|body|div|style|script|svg|table|template|form|nav|header|footer)\b/i.test(trimmed)
   const hasClosingTags = /<\/[a-zA-Z0-9_-]+>/.test(trimmed)
-  if (hasHtmlDoctypeOrTags && (hasClosingTags || lines.length >= 3)) {
+  if (hasHtmlDoctypeOrTags || (hasClosingTags && /<[a-zA-Z0-9_-]+/.test(trimmed))) {
     return { isCode: true, language: 'html' }
   }
+
+  const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
+  if (lines.length < 2) return { isCode: false, language: '' }
 
   // 3. JavaScript / TypeScript detection
   const hasImportsOrExports = /^(?:import\s+.+from\s+['"]|export\s+(?:default\s+)?(?:const|let|var|function|class)\b)/m.test(trimmed)
@@ -1214,10 +1233,13 @@ function detectUnfencedCode(paragraph: string): { isCode: boolean; language: str
   return { isCode: false, language: '' }
 }
 
+type IntermediateBlock =
+  | { kind: 'code'; language: string; title?: string; code: string; index: number }
+  | { kind: 'text'; text: string; index: number }
+
 export function MarkdownContent({ content, onOpenArtifact }: MarkdownContentProps) {
   if (!content) return null
 
-  const tokens: ReactNode[] = []
   // Matches ``` or ~~~ with optional leading whitespace, any info string on the opening line,
   // followed by code content, and closed by matching backticks or end of string.
   const codeBlockRegex =
@@ -1225,31 +1247,78 @@ export function MarkdownContent({ content, onOpenArtifact }: MarkdownContentProp
   let lastIndex = 0
   let match: RegExpExecArray | null
 
+  const rawBlocks: IntermediateBlock[] = []
+
   while ((match = codeBlockRegex.exec(content)) !== null) {
     if (match.index > lastIndex) {
       const regularText = content.slice(lastIndex, match.index)
-      tokens.push(renderTextBlocks(regularText, lastIndex, onOpenArtifact))
+      if (regularText.trim()) {
+        rawBlocks.push({ kind: 'text', text: regularText, index: lastIndex })
+      }
     }
 
     const fenceInfo = parseFenceInfo(match[2])
     const code = match[3].replace(/\n+$/, '')
-    tokens.push(
-      <CodeBlock
-        key={`cb-${match.index}`}
-        language={fenceInfo.language}
-        title={fenceInfo.title}
-        code={code}
-        onOpenArtifact={onOpenArtifact}
-      />,
-    )
+    rawBlocks.push({
+      kind: 'code',
+      language: fenceInfo.language,
+      title: fenceInfo.title,
+      code,
+      index: match.index,
+    })
 
     lastIndex = codeBlockRegex.lastIndex
   }
 
   if (lastIndex < content.length) {
     const regularText = content.slice(lastIndex)
-    tokens.push(renderTextBlocks(regularText, lastIndex, onOpenArtifact))
+    if (regularText.trim()) {
+      rawBlocks.push({ kind: 'text', text: regularText, index: lastIndex })
+    }
   }
+
+  // Post-process intermediate blocks:
+  // If a text block consists ONLY of un-fenced code tags (e.g. </style>, </div>, </form>, </br></br>)
+  // and is adjacent to a code block, merge it directly into that code block so it never spills out as raw text!
+  const consolidatedBlocks: IntermediateBlock[] = []
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const cur = rawBlocks[i]
+    if (cur.kind === 'text' && isPureCodeOrTags(cur.text)) {
+      const prev = consolidatedBlocks[consolidatedBlocks.length - 1]
+      const next = i + 1 < rawBlocks.length ? rawBlocks[i + 1] : null
+      if (prev && prev.kind === 'code') {
+        prev.code = (prev.code + '\n' + cur.text.trim()).trim()
+        continue
+      } else if (next && next.kind === 'code') {
+        next.code = (cur.text.trim() + '\n' + next.code).trim()
+        continue
+      } else {
+        consolidatedBlocks.push({
+          kind: 'code',
+          language: 'html',
+          code: cur.text.trim(),
+          index: cur.index,
+        })
+        continue
+      }
+    }
+    consolidatedBlocks.push(cur)
+  }
+
+  const tokens: ReactNode[] = consolidatedBlocks.map((b) => {
+    if (b.kind === 'code') {
+      return (
+        <CodeBlock
+          key={`cb-${b.index}`}
+          language={b.language}
+          title={b.title}
+          code={b.code}
+          onOpenArtifact={onOpenArtifact}
+        />
+      )
+    }
+    return renderTextBlocks(b.text, b.index, onOpenArtifact)
+  })
 
   return (
     <div className="w-full min-w-0 max-w-full space-y-4 text-[15px] leading-7 tracking-[-0.006em] text-[var(--text)]">
@@ -1378,10 +1447,14 @@ function renderTextBlocks(
           continue
         }
         const nextCodeCheck = detectUnfencedCode(nextTrimmed)
-        if (
-          nextCodeCheck.isCode &&
-          (nextCodeCheck.language === codeCheck.language || codeCheck.language === 'code')
-        ) {
+        const isCompatibleLang =
+          nextCodeCheck.language === codeCheck.language ||
+          codeCheck.language === 'code' ||
+          nextCodeCheck.language === 'code' ||
+          (['html', 'css', 'javascript', 'json'].includes(codeCheck.language) &&
+            ['html', 'css', 'javascript', 'json'].includes(nextCodeCheck.language))
+
+        if (nextCodeCheck.isCode && isCompatibleLang) {
           codeParts.push(nextTrimmed)
           nextIdx++
         } else {
