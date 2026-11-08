@@ -218,7 +218,15 @@ function resolveScreenTheme(text: string, fallbackDark = false): ScreenTheme | u
   return undefined
 }
 
-function extractScreenTopic(prompt: string, boardName?: string): string {
+function extractCallerName(prompt: string): string {
+  const m = prompt.match(/\b(?:with|for|calling|to|call)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\b/)
+  if (m && !/^(WhatsApp|Video|Voice|Audio|Phone|Screen|Wireframe|Mobile|Android|Iphone)/i.test(m[1])) {
+    return m[1].trim()
+  }
+  return 'Sarah Jenkins'
+}
+
+function extractScreenTopic(prompt: string, boardName?: string, recentChat?: string[]): string {
   const cleaned = prompt
     .replace(
       /^(?:can you\s+|could you\s+|please\s+|hey\s+|bro\s+)?(?:create|design|build|make|draft|draw|show|add|generate)\s+(?:me\s+)?(?:an?\s+|the\s+)?/i,
@@ -235,6 +243,19 @@ function extractScreenTopic(prompt: string, boardName?: string): string {
 
   if (cleaned.length >= 2 && !/^(it|this|that|one|cards?|next)$/i.test(cleaned)) {
     return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+  }
+  if (recentChat && recentChat.length > 0) {
+    for (let i = recentChat.length - 1; i >= 0; i--) {
+      const msg = recentChat[i]
+      if (/\b(instagram|insta)\b/i.test(msg)) return 'Instagram'
+      if (/\b(whatsapp|wa|calling|call)\b/i.test(msg)) return 'WhatsApp'
+      if (/\b(spotify|music|song)\b/i.test(msg)) return 'Music Player'
+      if (/\b(car|automotive|vehicle)\b/i.test(msg)) return 'Automotive Concept'
+      const match = msg.match(/\b(?:for|create|design|about|of)\s+([a-zA-Z0-9\s]{3,24})/i)
+      if (match && !/^(wireframe|screen|this|that|image|notes|cards)/i.test(match[1].trim())) {
+        return match[1].trim()
+      }
+    }
   }
   if (boardName && !/^untitled/i.test(boardName)) {
     return boardName
@@ -255,7 +276,7 @@ function designDomainScreens(prompt: string, snapshot: MochiBoardSnapshot, force
   const isDesktop =
     forceDesktop || /\b(website|landing page|desktop|web app|web layout|browser)\b/i.test(lower)
 
-  const topic = extractScreenTopic(prompt, lastFrame?.name?.replace(/\s*[—-].*$/, '') || snapshot.name)
+  const topic = extractScreenTopic(prompt, lastFrame?.name?.replace(/\s*[—-].*$/, '') || snapshot.name, snapshot.recentChat)
 
   // 1. Desktop Website / Landing Page Layout
   if (isDesktop) {
@@ -478,6 +499,79 @@ function designDomainScreens(prompt: string, snapshot: MochiBoardSnapshot, force
         },
       ],
       next: ['Add the next screen in the flow', 'Make it a website layout', 'Write real copy for these cards'],
+    }
+  }
+
+  // 4B. WhatsApp / Voice & Video Calling Screen (One-on-One Calling / Active Call)
+  if (
+    /\b(calls?|calling|video calls?|voice calls?|phone calls?|one on one|audio calls?|facetime|dialer|active call)\b/i.test(
+      lower,
+    ) ||
+    (/\b(wh?at?s?app|wa|wapp)\b/i.test(lower) && /\b(calling|calls?|voice|video|audio)\b/i.test(lower))
+  ) {
+    const isWhatsapp = /\b(wh?at?s?app|wa|wapp)\b/i.test(contextText) || !/\b(facetime|zoom|slack)\b/i.test(lower)
+    const brand = isWhatsapp ? 'WhatsApp' : 'Voice & Video'
+    const caller = extractCallerName(prompt)
+    const waTheme: ScreenTheme = {
+      bg: isDark ? '#0b141a' : '#ffffff',
+      surface: isDark ? '#111b21' : '#f0f2f5',
+      text: isDark ? '#e9edef' : '#111b21',
+      muted: isDark ? '#8696a0' : '#667781',
+      primary: '#00a884',
+      onPrimary: '#ffffff',
+    }
+    const activeTheme = theme || waTheme
+    return {
+      say: `I created a ${isDark ? 'dark-themed ' : ''}${brand} one-on-one call screen for “${caller}” on your canvas ✦`,
+      screens: [
+        {
+          name: `${brand} — Call (${caller})${themeLabel}`,
+          device: 'iPhone',
+          theme: activeTheme,
+          items: [
+            { piece: 'Nav bar', title: 'End-to-end encrypted', icon: 'person_add' },
+            {
+              piece: 'Heading',
+              text: caller,
+              sub: `${brand} Audio Call · 04:18`,
+              align: 'center',
+              size: 24,
+            },
+            {
+              piece: 'Avatar',
+              size: 96,
+              align: 'center',
+            },
+            {
+              piece: 'Heading',
+              text: 'HD Spatial Audio Connected',
+              sub: 'Crisp & Noise Cancelled',
+              align: 'center',
+              size: 13,
+            },
+            {
+              piece: 'List row',
+              icon: 'mic_off',
+              title: 'Mute Microphone',
+              sub: 'Tap to silence your audio stream',
+            },
+            {
+              piece: 'List row',
+              icon: 'volume_up',
+              title: 'Speakerphone Audio',
+              sub: 'Built-in device stereo speakers',
+            },
+            {
+              piece: 'List row',
+              icon: 'videocam',
+              title: 'Switch to Video Call',
+              sub: 'Request front camera feed',
+            },
+            { piece: 'Button', text: 'End Call ✕', style: 'primary' },
+          ],
+        },
+      ],
+      next: ['Switch to Video Call screen', 'Add the incoming call screen', 'Try a different color style'],
     }
   }
 
@@ -833,9 +927,9 @@ export async function handleMochiNativeAsk(
   const existingFrames = cards.filter((c) => c.type === 'frame')
   if (
     existingFrames.length > 0 &&
-    (/\b(try a different (color )?style|switch to (dark|light)|make it (dark|light) (theme|mode)|change (the )?theme)\b/i.test(lower) ||
-      (/^(dark|light) (theme|mode)$/i.test(lower))) &&
-    !/\b(create|build|new|another|similar to)\b/i.test(lower)
+    (/\b(try a different (color )?style|switch to (dark|light)|make it (dark|light)|turn it (dark|light)|change (the )?theme to (dark|light)|change theme|set (dark|light)|(dark|light) (theme|mode)|in (dark|light) theme)\b/i.test(lower) ||
+      (/\b(dark|light)\b/i.test(lower) && /\b(theme|mode|screen|frame|background)\b/i.test(lower))) &&
+    !/\b(create|build|new screen|another screen)\b/i.test(lower)
   ) {
     const targetFrame =
       selectedCards.find((c) => c.type === 'frame') || existingFrames[existingFrames.length - 1]
@@ -876,6 +970,37 @@ export async function handleMochiNativeAsk(
       say: `I restyled “${targetFrame.name || 'your screen'}” into ${makeDark ? 'sleek Dark Theme' : 'clean Light Theme'} ✦`,
       edit,
       next: ['Add the next screen in the flow', 'Write real copy for these cards', 'Make it a website layout'],
+    })
+  }
+
+  // 0C. Quick Command: Edit Button text / CTA text on active screen
+  const buttonEditMatch = prompt.match(/\b(?:change|make|rename|set|update)\s+(?:the\s+)?button(?:\s+text)?\s+(?:to|say)\s+["“']?([^"”']+)["”']?/i)
+  if (buttonEditMatch && existingFrames.length > 0) {
+    const newBtnText = buttonEditMatch[1].trim()
+    const targetFrame = selectedCards.find((c) => c.type === 'frame') || existingFrames[existingFrames.length - 1]
+    const childTexts = cards.filter((c) => c.onFrame === targetFrame.id && c.type === 'text')
+    const btnTextCard = childTexts.find((c) => /button|submit|start|get started|sign|continue|explore|create|launch|send|end call/i.test(c.text || '')) || childTexts[childTexts.length - 1]
+    if (btnTextCard) {
+      return JSON.stringify({
+        say: `I updated the button to say “${newBtnText}” on ${targetFrame.name || 'your screen'} ✦`,
+        edit: [{ id: btnTextCard.id, text: newBtnText }],
+        next: ['Add the next screen in the flow', 'Switch to dark theme', 'Make it a website layout'],
+      })
+    }
+  }
+
+  // 0D. Quick Command: Rename Screen / Change Screen Title
+  const renameScreenMatch = prompt.match(/\b(?:rename|change title of|change screen to|change header to|set title to)\s+(?:the\s+)?(?:screen|frame|board)?\s*(?:to)?\s+["“']?([^"”']+)["”']?/i)
+  if (renameScreenMatch && existingFrames.length > 0) {
+    const newTitle = renameScreenMatch[1].trim()
+    const targetFrame = selectedCards.find((c) => c.type === 'frame') || existingFrames[existingFrames.length - 1]
+    const navText = cards.find((c) => c.onFrame === targetFrame.id && c.type === 'text' && c.y - targetFrame.y < 80)
+    const edits: Array<Record<string, unknown>> = [{ id: targetFrame.id, name: newTitle }]
+    if (navText) edits.push({ id: navText.id, text: newTitle })
+    return JSON.stringify({
+      say: `I renamed the screen to “${newTitle}” ✦`,
+      edit: edits,
+      next: ['Add the next screen in the flow', 'Switch to dark theme', 'Write real copy for these cards'],
     })
   }
 
@@ -1047,66 +1172,85 @@ export async function handleMochiNativeAsk(
 
   // 3. Build Wireframe Screen / App UI / Website Layout intent (including quick follow-ups!)
   const isScreenIntent =
-    /\b(wireframe|screen|mobile app|home screen|login|sign[- ]?up|checkout|onboarding|dashboard|settings page|profile page|profile screen|landing page|pricing page|website|website layout|desktop version|mobile version|ui\b)\b/i.test(
+    /\b(wireframes?|screens?|mobile apps?|home screens?|calling screens?|call screens?|login screens?|profile screens?|dashboard|checkout|onboarding|landing pages?|pricing pages?|websites?|website layouts?|desktop versions?|mobile versions?|ui\b)\b/i.test(
       lower,
-    ) &&
-    /\b(design|build|make|create|show|draft|layout|add|try|wireframe)\b/i.test(lower)
+    ) ||
+    (/\b(design|build|make|create|show|draft|layout|add|try|wireframe)\b/i.test(lower) &&
+      /\b(ui|apps?|pages?|views?|screens?|frames?|web|wireframes?|calling|calls?|wh?at?s?app)\b/i.test(lower))
 
   if (isScreenIntent) {
     const baseSpec = designDomainScreens(prompt, snapshot)
 
-    // Try local LLM to customize screen copy if available, while preserving theme & valid piece structure
-    try {
-      const llmRaw = await runTextPrompt(
-        `User request: "${prompt}"\nBoard context: "${snapshot.name}"\nDesign a UI screen in JSON.`,
-        `Return ONLY valid JSON matching:
-{
-  "say": "Short warm message ending with ✦",
-  "screenName": "Screen Title",
-  "navTitle": "Top bar title",
-  "cardTitle": "Featured card heading",
-  "cardText": "Featured card description",
-  "row1Title": "First list row title",
-  "row1Sub": "First list row subtitle",
-  "row2Title": "Second list row title",
-  "row2Sub": "Second list row subtitle",
-  "buttonText": "Primary CTA button text"
-}
-Tailor every field specifically to the user's request ("${prompt}"). No generic placeholders.`,
-        280,
-        0.3,
+    // Check if baseSpec is already a rich domain-specific screen (e.g. Instagram, WhatsApp, Calling, Spotify, Messages, etc.)
+    const isSpecialDomain =
+      /\b(instagram|insta|wh?at?s?app|wa|wapp|calling|calls?|spotify|music|tiktok|slack|discord|messages|store|cart|bank|crypto|login|signin|dashboard|analytics)\b/i.test(
+        lower,
       )
-      const a = llmRaw.indexOf('{')
-      const b = llmRaw.lastIndexOf('}')
-      if (a >= 0 && b > a) {
-        const parsed = JSON.parse(llmRaw.slice(a, b + 1))
-        const firstScreen = baseSpec.screens?.[0]
-        if (parsed && firstScreen && firstScreen.device === 'iPhone' && baseSpec.screens.length === 1) {
-          if (parsed.screenName) firstScreen.name = String(parsed.screenName)
-          if (parsed.say) baseSpec.say = String(parsed.say).endsWith('✦') ? parsed.say : `${parsed.say} ✦`
-          for (const item of firstScreen.items as Array<Record<string, unknown>>) {
-            if (item.piece === 'Nav bar' && parsed.navTitle) item.title = String(parsed.navTitle)
-            if (item.piece === 'Card' && parsed.cardTitle) {
-              item.title = String(parsed.cardTitle)
-              if (parsed.cardText) item.text = String(parsed.cardText)
-              break
+
+    // Only invoke LLM for generic custom topics where copy needs domain flavor, NEVER overwrite tailored domain screens!
+    if (!isSpecialDomain) {
+      try {
+        const topicName = extractScreenTopic(prompt, snapshot.name, snapshot.recentChat)
+        const llmRaw = await runTextPrompt(
+          `User request: "${prompt}"\nBoard context: "${snapshot.name}"\nDesign a UI screen in JSON.`,
+          `Return ONLY valid JSON matching:
+{
+  "say": "Here is a custom wireframe for ${topicName} ✦",
+  "screenName": "${topicName} — Overview",
+  "navTitle": "${topicName}",
+  "cardTitle": "Featured ${topicName} Spotlight",
+  "cardText": "Key details and highlights for ${topicName}",
+  "row1Title": "First section heading",
+  "row1Sub": "Supporting detail line",
+  "row2Title": "Second section heading",
+  "row2Sub": "Secondary detail line",
+  "buttonText": "Explore ${topicName} →"
+}
+Tailor every field specifically to the user's request ("${prompt}"). DO NOT use generic words like "Featured Concept" or "Quick Action".`,
+          280,
+          0.3,
+        )
+        const a = llmRaw.indexOf('{')
+        const b = llmRaw.lastIndexOf('}')
+        if (a >= 0 && b > a) {
+          const parsed = JSON.parse(llmRaw.slice(a, b + 1))
+          const firstScreen = baseSpec.screens?.[0]
+          const isDummy = (s?: unknown) =>
+            !s ||
+            typeof s !== 'string' ||
+            /^(Featured Concept|Quick Action|Short warm message|Screen Title|Top bar title|Primary CTA|Button|Untitled board|Title|Card title|Row title|First list row|Second list row)$/i.test(
+              s.trim(),
+            ) ||
+            s.includes('ending with ✦') ||
+            s.includes('Follow-up suggestion')
+
+          if (parsed && firstScreen && firstScreen.device === 'iPhone' && baseSpec.screens.length === 1) {
+            if (!isDummy(parsed.screenName)) firstScreen.name = String(parsed.screenName)
+            if (!isDummy(parsed.say)) baseSpec.say = String(parsed.say).endsWith('✦') ? parsed.say : `${parsed.say} ✦`
+            for (const item of firstScreen.items as Array<Record<string, unknown>>) {
+              if (item.piece === 'Nav bar' && !isDummy(parsed.navTitle)) item.title = String(parsed.navTitle)
+              if (item.piece === 'Card' && !isDummy(parsed.cardTitle)) {
+                item.title = String(parsed.cardTitle)
+                if (!isDummy(parsed.cardText)) item.text = String(parsed.cardText)
+                break
+              }
             }
+            const rows = (firstScreen.items as Array<Record<string, unknown>>).filter((i) => i.piece === 'List row')
+            if (rows[0] && !isDummy(parsed.row1Title)) {
+              rows[0].title = String(parsed.row1Title)
+              if (!isDummy(parsed.row1Sub)) rows[0].sub = String(parsed.row1Sub)
+            }
+            if (rows[1] && !isDummy(parsed.row2Title)) {
+              rows[1].title = String(parsed.row2Title)
+              if (!isDummy(parsed.row2Sub)) rows[1].sub = String(parsed.row2Sub)
+            }
+            const btn = (firstScreen.items as Array<Record<string, unknown>>).find((i) => i.piece === 'Button')
+            if (btn && !isDummy(parsed.buttonText)) btn.text = String(parsed.buttonText)
           }
-          const rows = (firstScreen.items as Array<Record<string, unknown>>).filter((i) => i.piece === 'List row')
-          if (rows[0] && parsed.row1Title) {
-            rows[0].title = String(parsed.row1Title)
-            if (parsed.row1Sub) rows[0].sub = String(parsed.row1Sub)
-          }
-          if (rows[1] && parsed.row2Title) {
-            rows[1].title = String(parsed.row2Title)
-            if (parsed.row2Sub) rows[1].sub = String(parsed.row2Sub)
-          }
-          const btn = (firstScreen.items as Array<Record<string, unknown>>).find((i) => i.piece === 'Button')
-          if (btn && parsed.buttonText) btn.text = String(parsed.buttonText)
         }
+      } catch {
+        // Domain-aware screen architect already built a tailored screen in baseSpec!
       }
-    } catch {
-      // Domain-aware screen architect already built a tailored screen in baseSpec!
     }
 
     return JSON.stringify(baseSpec)
@@ -1310,16 +1454,12 @@ Tailor every field specifically to the user's request ("${prompt}"). No generic 
     const systemPrompt = `You are Second Brain, the warm, sharp AI co-pilot built into Second Brain's Canvas.
 You MUST reply with a single valid JSON object (no markdown fences outside JSON) that matches this schema:
 {
-  "say": "Short warm message ending with ✦",
-  "collections": [{"name": "Theme Name", "color": "pink"|"butter"|"mint"|"lilac"|"sky"|"peach"}],
+  "say": "Here are fresh, tailored ideas for your board ✦",
+  "collections": [{"name": "Core Themes", "color": "pink"}],
   "add": [
-    {"type": "note"|"todo"|"title"|"swatch"|"doc", "name": "Short label", "text": "Specific, useful card content", "color": "butter"|"pink"|"mint"|"sky"|"lilac"|"peach"|"white", "items": ["task 1", "task 2"], "in": "Optional Theme Name"}
+    {"type": "note", "name": "Key Idea", "text": "Specific, insightful idea text", "color": "butter", "in": "Core Themes"}
   ],
-  "edit": [
-    {"id": "existing_card_id", "text": "Updated text", "color": "pink", "in": "Optional Theme Name"}
-  ],
-  "connect": [["card_id_1", "card_id_2"]],
-  "next": ["Follow-up suggestion 1", "Follow-up suggestion 2"]
+  "next": ["Group notes by theme", "Design a wireframe screen", "Make an action checklist"]
 }
 Only include arrays you actually need. Generate specific, high-signal content tailored to the user's topic.`
 
@@ -1331,7 +1471,15 @@ Only include arrays you actually need. Generate specific, high-signal content ta
     if (a >= 0 && b > a) {
       const parsed = JSON.parse(rawText.slice(a, b + 1))
       if (parsed && typeof parsed === 'object') {
-        if (!parsed.say) parsed.say = 'Here is what I put together for your board ✦'
+        if (!parsed.say || /Short warm message|ending with ✦/i.test(parsed.say)) {
+          parsed.say = `I organized tailored ideas for “${prompt.slice(0, 36)}” on your canvas ✦`
+        }
+        if (Array.isArray(parsed.next)) {
+          parsed.next = parsed.next.filter((t: any) => typeof t === 'string' && !/Follow-up suggestion/i.test(t))
+          if (parsed.next.length === 0) {
+            parsed.next = ['Group notes by theme', 'Design a wireframe screen', 'Make an action checklist']
+          }
+        }
         return JSON.stringify(parsed)
       }
     } else if (rawText.trim().length > 10) {

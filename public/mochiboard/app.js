@@ -479,8 +479,9 @@
     const b = await MB.load(id); if (!b) return;
     miniCache.clear(); board = b; if (chatOpen()) setTimeout(renderChat, 0); normStyles(board); setTimeout(resetHistory, 0); view = Object.assign({ x: 160, y: 140, z: 1 }, b.view); sel.clear(); editing = null; focusSet = null; closeColor(); renderPalette();
     board.cards.forEach(c => { if (c.type === 'audio' && c.rec) { c.rec = false; c.paused = false; if (!c.src) c.txNote = 'This recording got interrupted. Tap Replace to record again.'; } });
+    board.cards.forEach(c => { if (c.camErr) c.camErr = cleanBrand(c.camErr); if (typeof c.text === 'string') c.text = cleanBrand(c.text); if (typeof c.name === 'string') c.name = cleanBrand(c.name); });
     board.cards.forEach(c => { if (c.type === 'canvas' && c.board) { const kb = boardList.find(x => x.id === c.board); if (kb && kb.name !== c.text) c.text = kb.name; } });
-    $('boardName').value = board.name; renderAll(); refreshBoards(); try { localStorage.setItem('mochiboard:last', id); } catch (e) {}
+    $('boardName').value = cleanBrand(board.name); renderAll(); refreshBoards(); try { localStorage.setItem('mochiboard:last', id); } catch (e) {}
   }
   let saveT = 0;
   // ---------- undo / redo: a snapshot of the board after each change settles ----------
@@ -639,7 +640,7 @@
 
   // ---------- rendering ----------
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const cleanBrand = s => String(s ?? '').replace(/\bMochiboard\b/gi, 'Second Brain').replace(/\bMochi\b/gi, 'Second Brain');
+  const cleanBrand = s => String(s ?? '').replace(/mochiboard/gi, 'Second Brain').replace(/\bmochi\b/gi, 'Second Brain');
   function inner(c) {
     switch (c.type) {
       case 'note': return `${c.mochi ? `<div class="nm-head"><img class="nmochi" src="stamps/mochi-wave.png" alt=""><div class="nname">${esc(cleanBrand(c.name || ''))}</div></div>` : c.name !== undefined ? `<div class="nname">${esc(cleanBrand(c.name))}</div>` : ''}<div class="text">${esc(cleanBrand(c.text))}</div>`;
@@ -2395,9 +2396,17 @@
   $('mcClose').onclick = () => mochiOpen(false);
   $('mcNew').onclick = () => { chatLog().length = 0; if (settings.chatKeep === 'board') { board.chat = []; save(); } renderChat(); $('mcInput').focus(); };
   const IDEAS = ['Group these by theme', 'Design a mobile login screen', 'Generate an AI image for this board', 'Make a checklist from this'];
+  const cleanMsgText = t => {
+    const s = String(t ?? '').trim();
+    if (!s || /^Short warm message/i.test(s) || (/ending with ✦$/i.test(s) && s.length < 35)) {
+      return 'I crafted this layout for you right on your board ✦';
+    }
+    return s;
+  };
   function msgEl(m) {
-    const d = document.createElement('div'); d.className = 'mc-msg ' + m.who; d.textContent = m.text;
-    const list = m.acts?.length ? m.acts : (Array.isArray(m.next) && m.next.length ? m.next.map(t => ({ label: t, cls: 'next', run: () => ask(t) })) : []);
+    const d = document.createElement('div'); d.className = 'mc-msg ' + m.who; d.textContent = cleanMsgText(m.text);
+    const list = (m.acts?.length ? m.acts : (Array.isArray(m.next) && m.next.length ? m.next.map(t => ({ label: t, cls: 'next', run: () => ask(t) })) : []))
+      .filter(a => a && a.label && !/Follow-up suggestion/i.test(a.label));
     if (list.length) { const box = document.createElement('div'); box.className = 'm-acts';
       list.forEach(a => { const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label; b.className = a.cls || (a.ghost ? 'ghost' : ''); b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); box.remove(); if (m.next) delete m.next; if (typeof a.run === 'function') a.run(); else if (a.label) ask(a.label); }; box.appendChild(b); }); d.appendChild(box); }
     return d;
@@ -2414,8 +2423,9 @@
   const noOrphan = t => String(t ?? '').replace(/ ([✦♡★☆✧]+)$/, '\u00a0$1');
   function addMsg(who, text, acts = []) {
     if (!board) return;
-    const nextLabels = (acts || []).filter(a => a && a.cls === 'next' && a.label).map(a => a.label);
-    const log = chatLog(), m = { who, text: who === 'mochi' ? noOrphan(text) : text, t: Date.now(), ...(nextLabels.length ? { next: nextLabels } : {}) }, max = +settings.chatMax || 60;
+    const clean = cleanMsgText(text);
+    const nextLabels = (acts || []).filter(a => a && a.cls === 'next' && a.label && !/Follow-up suggestion/i.test(a.label)).map(a => a.label);
+    const log = chatLog(), m = { who, text: who === 'mochi' ? noOrphan(clean) : clean, t: Date.now(), ...(nextLabels.length ? { next: nextLabels } : {}) }, max = +settings.chatMax || 60;
     log.push(m); if (log.length > max) log.splice(0, log.length - max); if (settings.chatKeep === 'board') save();
     const list = $('mcList'); list.querySelector('.mc-empty')?.remove(); list.appendChild(msgEl({ ...m, acts })); list.scrollTop = list.scrollHeight;
   }

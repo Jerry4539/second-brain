@@ -161,8 +161,8 @@ export function CanvasPage() {
           onNotify: (msg) => showToast(msg, 'info'),
         }),
       syncStorage: ({ index, folders }) => {
-        setSetting('canvas_mochiboard_index', index).catch(() => {})
-        setSetting('canvas_mochiboard_folders', folders).catch(() => {})
+        setSetting('canvas_mochiboard_index', index).catch(() => { })
+        setSetting('canvas_mochiboard_folders', folders).catch(() => { })
       },
       notify: (message) => {
         showToast(message, 'info')
@@ -181,7 +181,7 @@ export function CanvasPage() {
     <div className="relative h-full w-full overflow-hidden bg-[#131118]">
       <iframe
         ref={iframeRef}
-        src="/mochiboard/index.html?v=sb7"
+        src="/mochiboard/index.html?v=sb13"
         title="Canvas"
         className="h-full w-full border-0"
         allow="microphone; camera; clipboard-read; clipboard-write"
