@@ -218,6 +218,7 @@ pub async fn start_text_engine(
     cmd.creation_flags(CREATE_NO_WINDOW);
   }
 
+  #[allow(unused_mut)]
   let mut args = vec![
     "-m".to_string(),
     model_path.clone(),

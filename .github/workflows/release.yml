@@ -48,6 +48,17 @@ jobs:
           touch src-tauri/resources/onnxruntime/placeholder.txt
           touch src-tauri/resources/laya/placeholder.txt
 
+      - name: Install NSIS Compiler (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install nsis -y
+          $nsisPath = "C:\Program Files (x86)\NSIS"
+          if (Test-Path $nsisPath) {
+            echo $nsisPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            & "$nsisPath\makensis.exe" /VERSION
+          }
+
       - name: Build Tauri Desktop Application (.exe / .dmg / .app)
         uses: tauri-apps/tauri-action@v0
         env:
