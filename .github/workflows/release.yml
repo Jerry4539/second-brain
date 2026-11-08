@@ -39,6 +39,15 @@ jobs:
       - name: Install dependencies
         run: npm ci || npm install
 
+      - name: Ensure resource directories and placeholders
+        shell: bash
+        run: |
+          mkdir -p src-tauri/resources/llama src-tauri/resources/sd src-tauri/resources/onnxruntime src-tauri/resources/laya
+          touch src-tauri/resources/llama/placeholder.txt
+          touch src-tauri/resources/sd/placeholder.txt
+          touch src-tauri/resources/onnxruntime/placeholder.txt
+          touch src-tauri/resources/laya/placeholder.txt
+
       - name: Build Tauri Desktop Application (.exe / .dmg / .app)
         uses: tauri-apps/tauri-action@v0
         env:
