@@ -2388,13 +2388,417 @@
     $('mochi').classList.toggle('chat', on);
     $('mBubble').classList.remove('on');
     if (on) {
+      showHistoryView(false);
       renderChat();
-      $('mcInput').focus();
+      $('mcInput')?.focus();
     }
   }
   $('mPill').onclick = () => mochiOpen(!chatOpen());
   $('mcClose').onclick = () => mochiOpen(false);
-  $('mcNew').onclick = () => { chatLog().length = 0; if (settings.chatKeep === 'board') { board.chat = []; save(); } renderChat(); $('mcInput').focus(); };
+
+  // ---------- Chat Sessions & History Management ----------
+  const sessionChatSessions = {};
+  let activeSessionId = null;
+  let historyOpen = false;
+
+  function deriveTitle(firstMsgText) {
+    if (!firstMsgText) return 'New Chat';
+    const clean = String(firstMsgText).replace(/[\r\n]+/g, ' ').trim();
+    if (!clean) return 'New Chat';
+    return clean.length > 28 ? clean.slice(0, 28) + '…' : clean;
+  }
+
+  function getChatSessions() {
+    if (!board) {
+      sessionChatSessions['global'] = sessionChatSessions['global'] || [];
+      return sessionChatSessions['global'];
+    }
+    if (!board.chatSessions || !Array.isArray(board.chatSessions)) {
+      board.chatSessions = [];
+      // Migrate legacy board.chat if present
+      if (Array.isArray(board.chat) && board.chat.length) {
+        board.chatSessions.push({
+          id: 'chat_' + Date.now(),
+          title: deriveTitle(board.chat[0]?.text) || 'Chat 1',
+          t: board.chat[0]?.t || Date.now(),
+          messages: board.chat.slice(),
+        });
+      }
+    }
+    return board.chatSessions;
+  }
+
+  function getActiveSession() {
+    const sessions = getChatSessions();
+    if (board && board.activeChatId && !activeSessionId) {
+      activeSessionId = board.activeChatId;
+    }
+    let act = sessions.find(s => s.id === activeSessionId);
+    if (!act) {
+      if (sessions.length > 0) {
+        act = sessions[0];
+        activeSessionId = act.id;
+      } else {
+        act = createNewSession('New Chat');
+      }
+    }
+    return act;
+  }
+
+  function createNewSession(title = 'New Chat') {
+    const sessions = getChatSessions();
+    const session = {
+      id: 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      title,
+      t: Date.now(),
+      messages: [],
+    };
+    sessions.unshift(session);
+    activeSessionId = session.id;
+    if (board) {
+      board.activeChatId = activeSessionId;
+      board.chat = session.messages;
+      save();
+    }
+    return session;
+  }
+
+  function switchSession(id) {
+    const sessions = getChatSessions();
+    const s = sessions.find(x => x.id === id);
+    if (s) {
+      activeSessionId = s.id;
+      if (board) {
+        board.activeChatId = activeSessionId;
+        board.chat = s.messages;
+        save();
+      }
+      showHistoryView(false);
+      renderChat();
+      $('mcInput')?.focus();
+    }
+  }
+
+  function renameSession(id, newTitle) {
+    const sessions = getChatSessions();
+    const s = sessions.find(x => x.id === id);
+    if (s && newTitle && newTitle.trim()) {
+      s.title = newTitle.trim();
+      if (board) save();
+      renderHistoryList();
+    }
+  }
+
+  function deleteSession(id) {
+    const sessions = getChatSessions();
+    const idx = sessions.findIndex(x => x.id === id);
+    if (idx >= 0) {
+      sessions.splice(idx, 1);
+      if (activeSessionId === id) {
+        if (sessions.length > 0) {
+          activeSessionId = sessions[0].id;
+        } else {
+          createNewSession('New Chat');
+        }
+      }
+      if (board) {
+        board.activeChatId = activeSessionId;
+        board.chat = getActiveSession().messages;
+        save();
+      }
+      renderHistoryList();
+      renderChat();
+    }
+  }
+
+  function chatLog() {
+    return getActiveSession().messages;
+  }
+
+  function showHistoryView(show) {
+    historyOpen = !!show;
+    const histView = $('mcHistoryView');
+    const listView = $('mcList');
+    const formView = $('mcForm');
+    const attachTray = $('mcAttachTray');
+    if (!histView) return;
+    if (historyOpen) {
+      renderHistoryList();
+      histView.hidden = false;
+      histView.style.setProperty('display', 'flex', 'important');
+      if (listView) listView.style.setProperty('display', 'none', 'important');
+      if (formView) formView.style.setProperty('display', 'none', 'important');
+      if (attachTray) attachTray.style.setProperty('display', 'none', 'important');
+      $('mcHistoryBtn')?.classList.add('active');
+    } else {
+      histView.hidden = true;
+      histView.style.setProperty('display', 'none', 'important');
+      if (listView) listView.style.setProperty('display', 'flex', 'important');
+      if (formView) formView.style.setProperty('display', 'flex', 'important');
+      if (stagedAttachment && attachTray) attachTray.style.setProperty('display', 'flex', 'important');
+      $('mcHistoryBtn')?.classList.remove('active');
+    }
+  }
+
+  function startRename(s, itemEl) {
+    const titleEl = itemEl.querySelector('.mc-hist-title-text');
+    if (!titleEl) return;
+    const oldTitle = s.title || 'Untitled Chat';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'mc-hist-rename-input';
+    input.value = oldTitle;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      const val = input.value.trim() || oldTitle;
+      renameSession(s.id, val);
+    };
+
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      } else if (e.key === 'Escape') {
+        done = true;
+        renderHistoryList();
+      }
+    };
+    input.onblur = commit;
+  }
+
+  function renderHistoryList() {
+    const listEl = $('mcHistList');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    const sessions = getChatSessions();
+    if (!sessions.length) {
+      listEl.innerHTML = '<div class="mc-hist-empty">No past chats yet.<br><small>Start a chat to build your creative history ✦</small></div>';
+      return;
+    }
+    sessions.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'mc-hist-item' + (s.id === activeSessionId ? ' active' : '');
+      item.dataset.id = s.id;
+
+      const icon = document.createElement('div');
+      icon.className = 'mc-hist-icon';
+      icon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+
+      const content = document.createElement('div');
+      content.className = 'mc-hist-content';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'mc-hist-title-text';
+      titleEl.textContent = s.title || 'Untitled Chat';
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'mc-hist-meta';
+      const lastMsg = s.messages && s.messages.length ? s.messages[s.messages.length - 1].text : '';
+      metaEl.textContent = lastMsg ? (lastMsg.slice(0, 34) + (lastMsg.length > 34 ? '…' : '')) : `${s.messages?.length || 0} messages`;
+
+      content.appendChild(titleEl);
+      content.appendChild(metaEl);
+
+      const moreBtn = document.createElement('button');
+      moreBtn.type = 'button';
+      moreBtn.className = 'mc-hist-more-btn';
+      moreBtn.title = 'Options';
+      moreBtn.innerHTML = '⋯';
+
+      item.appendChild(icon);
+      item.appendChild(content);
+      item.appendChild(moreBtn);
+
+      item.onclick = (e) => {
+        if (e.target.closest('.mc-hist-more-btn') || e.target.closest('.mc-item-dropdown') || e.target.closest('.mc-hist-rename-input')) return;
+        switchSession(s.id);
+      };
+
+      const triggerMenu = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        document.querySelectorAll('.mc-item-dropdown').forEach(d => d.remove());
+
+        const dd = document.createElement('div');
+        dd.className = 'mc-item-dropdown';
+        dd.innerHTML = `
+          <button type="button" data-act="rename">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Rename
+          </button>
+          <button type="button" data-act="delete" class="danger">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Delete
+          </button>
+        `;
+        dd.onclick = (e) => {
+          e.stopPropagation();
+          const act = e.target.closest('[data-act]')?.dataset.act;
+          dd.remove();
+          if (act === 'rename') {
+            startRename(s, item);
+          } else if (act === 'delete') {
+            deleteSession(s.id);
+          }
+        };
+        item.appendChild(dd);
+
+        const closeDd = (e) => {
+          if (!dd.contains(e.target) && e.target !== moreBtn) {
+            dd.remove();
+            document.removeEventListener('pointerdown', closeDd, true);
+          }
+        };
+        setTimeout(() => document.addEventListener('pointerdown', closeDd, true));
+      };
+
+      moreBtn.onclick = triggerMenu;
+      item.oncontextmenu = triggerMenu;
+
+      listEl.appendChild(item);
+    });
+  }
+
+  if ($('mcHistoryBtn')) $('mcHistoryBtn').onclick = () => showHistoryView(!historyOpen);
+  if ($('mcHistBack')) $('mcHistBack').onclick = () => showHistoryView(false);
+  if ($('mcHistNew')) $('mcHistNew').onclick = () => {
+    createNewSession('New Chat');
+    showHistoryView(false);
+    renderChat();
+    $('mcInput')?.focus();
+  };
+  if ($('mcNew')) $('mcNew').onclick = () => {
+    createNewSession('New Chat');
+    showHistoryView(false);
+    renderChat();
+    $('mcInput')?.focus();
+  };
+
+  // ---------- Pin Image to Canvas ----------
+  window.addImageToCanvas = (src) => {
+    if (!board) return;
+    const img = new Image();
+    img.onload = () => {
+      const origW = img.naturalWidth || 320;
+      const origH = img.naturalHeight || 240;
+      const w = 280;
+      const h = Math.round(w * (origH / origW));
+      const cx = Math.round(-pan.x / zoom + (innerWidth / 2) / zoom - w / 2);
+      const cy = Math.round(-pan.y / zoom + (innerHeight / 2) / zoom - h / 2);
+      const c = card('image', {
+        src,
+        w,
+        h,
+        x: cx,
+        y: cy,
+        tagText: 'Pinned from Chat',
+      });
+      board.cards.push(c);
+      renderCard(c);
+      save();
+      sel.clear();
+      sel.add(c.id);
+      renderSel();
+      showToast('Image pinned to your canvas ✦', 'info');
+    };
+    img.src = src;
+  };
+
+  // ---------- Image Attachment Handling ----------
+  let stagedAttachment = null;
+  const fileInput = $('mcFileInput');
+  const attachBtn = $('mcAttachBtn');
+  const attachTray = $('mcAttachTray');
+  const attachThumb = $('mcAttachThumb');
+  const attachName = $('mcAttachName');
+  const attachSize = $('mcAttachSize');
+  const attachRemove = $('mcAttachRemove');
+
+  function stageImageFile(file) {
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('Please select a valid image file', 'warn');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      stagedAttachment = {
+        dataUrl: e.target.result,
+        name: file.name || 'image.png',
+        size: Math.round(file.size / 1024) + ' KB',
+      };
+      if (attachThumb) attachThumb.src = stagedAttachment.dataUrl;
+      if (attachName) attachName.textContent = stagedAttachment.name;
+      if (attachSize) attachSize.textContent = stagedAttachment.size;
+      if (attachTray) {
+        attachTray.hidden = false;
+        attachTray.style.display = 'flex';
+      }
+      $('mcInput')?.focus();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  if (attachBtn && fileInput) attachBtn.onclick = () => fileInput.click();
+  if (fileInput) {
+    fileInput.onchange = () => {
+      if (fileInput.files && fileInput.files[0]) {
+        stageImageFile(fileInput.files[0]);
+      }
+    };
+  }
+  if (attachRemove) {
+    attachRemove.onclick = () => {
+      stagedAttachment = null;
+      if (fileInput) fileInput.value = '';
+      if (attachTray) {
+        attachTray.hidden = true;
+        attachTray.style.display = 'none';
+      }
+    };
+  }
+
+  // Paste image into input
+  $('mcInput')?.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+    if (items) {
+      for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          stageImageFile(blob);
+          e.preventDefault();
+          break;
+        }
+      }
+    }
+  });
+
+  // Drag & drop onto mChat
+  $('mChat')?.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    $('mChat').classList.add('drag-over');
+  });
+  $('mChat')?.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    $('mChat').classList.remove('drag-over');
+  });
+  $('mChat')?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    $('mChat').classList.remove('drag-over');
+    const files = e.dataTransfer?.files;
+    if (files && files[0] && files[0].type.startsWith('image/')) {
+      stageImageFile(files[0]);
+    }
+  });
+
   const IDEAS = ['Group these by theme', 'Design a mobile login screen', 'Generate an AI image for this board', 'Make a checklist from this'];
   const cleanMsgText = t => {
     const s = String(t ?? '').trim();
@@ -2411,23 +2815,80 @@
       return '';
     }
   };
+
+  // Safe markdown formatting for AI messages
+  function formatMsgHtml(raw) {
+    if (!raw) return '';
+    let s = String(raw)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    s = s.replace(/```([\s\S]*?)```/g, '<pre class="mc-code-block"><code>$1</code></pre>');
+    s = s.replace(/`([^`]+)`/g, '<code class="mc-code-inline">$1</code>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    const lines = s.split('\n');
+    const formattedLines = [];
+    for (let line of lines) {
+      const bulletMatch = line.match(/^\s*[\*\-]\s+(.*)$/);
+      if (bulletMatch) {
+        formattedLines.push(`<div class="mc-bullet"><span class="mc-dot">✦</span><span class="mc-bullet-text">${bulletMatch[1]}</span></div>`);
+      } else {
+        formattedLines.push(line);
+      }
+    }
+    s = formattedLines.join('\n');
+    s = s.replace(/\n\n+/g, '<div class="mc-p-gap"></div>');
+    s = s.replace(/\n/g, '<br>');
+    return s;
+  }
+
   function msgEl(m) {
+    const isMe = m.who === 'me';
     const row = document.createElement('div');
-    row.className = 'mc-row ' + m.who;
+    row.className = 'mc-row ' + (isMe ? 'me' : 'mochi mc-mochi');
 
     const d = document.createElement('div');
-    d.className = 'mc-msg ' + m.who;
+    d.className = 'mc-msg ' + (isMe ? 'me' : 'mochi mc-mochi');
 
-    if (m.who === 'mochi') {
+    if (!isMe) {
       const author = document.createElement('div');
       author.className = 'mc-msg-author';
       author.textContent = 'Second Brain';
       d.appendChild(author);
     }
 
+    if (m.image) {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'mc-msg-image-wrap';
+      const img = document.createElement('img');
+      img.src = m.image;
+      img.alt = 'Attached image';
+      img.className = 'mc-msg-image';
+      img.onclick = () => window.open(m.image, '_blank');
+      imgWrap.appendChild(img);
+
+      const pinBtn = document.createElement('button');
+      pinBtn.type = 'button';
+      pinBtn.className = 'mc-btn-pin-img';
+      pinBtn.innerHTML = '✦ Pin to canvas';
+      pinBtn.onclick = (e) => {
+        e.stopPropagation();
+        window.addImageToCanvas(m.image);
+      };
+      imgWrap.appendChild(pinBtn);
+      d.appendChild(imgWrap);
+    }
+
     const textEl = document.createElement('div');
     textEl.className = 'mc-msg-text';
-    textEl.textContent = cleanMsgText(m.text);
+    if (m.who === 'mochi') {
+      textEl.innerHTML = formatMsgHtml(cleanMsgText(m.text));
+    } else {
+      textEl.textContent = cleanMsgText(m.text);
+    }
     d.appendChild(textEl);
 
     const list = (m.acts?.length ? m.acts : (Array.isArray(m.next) && m.next.length ? m.next.map(t => ({ label: t, cls: 'next', run: () => ask(t) })) : []))
@@ -2464,30 +2925,59 @@
     row.appendChild(d);
     return row;
   }
+
   function renderChat() {
-    const list = $('mcList'); list.innerHTML = ''; const msgs = chatLog();
-    if (!msgs.length) { list.innerHTML = `<div class="mc-empty"><b>Hi! I'm Second Brain ✦</b>Ask me to sort, write, plan or find things for this board.<div class="mc-ideas">${IDEAS.filter(i => settings.mobbin || !/Mobbin/.test(i)).map(i => `<button>${i}</button>`).join('')}</div></div>`;
-      list.querySelectorAll('.mc-ideas button').forEach(b => b.onclick = () => { ask(b.textContent); }); return; }
-    msgs.forEach(m => list.appendChild(msgEl(m))); list.scrollTop = list.scrollHeight;
+    const list = $('mcList');
+    if (!list) return;
+    list.innerHTML = '';
+    const msgs = chatLog();
+    if (!msgs.length) {
+      list.innerHTML = `<div class="mc-empty"><b>Hi! I'm Second Brain ✦</b>Ask me to sort, design, plan or find things for this board.<div class="mc-ideas">${IDEAS.filter(i => settings.mobbin || !/Mobbin/.test(i)).map(i => `<button>${i}</button>`).join('')}</div></div>`;
+      list.querySelectorAll('.mc-ideas button').forEach(b => b.onclick = () => { ask(b.textContent); });
+      return;
+    }
+    msgs.forEach(m => list.appendChild(msgEl(m)));
+    list.scrollTop = list.scrollHeight;
   }
-  // where a chat lives depends on Settings: saved with the board, kept only until Mochiboard quits, or not kept at all
-  const sessionChats = {};
-  function chatLog() { if (!board) return []; if (settings.chatKeep === 'board') return (board.chat = board.chat || []); return (sessionChats[board.id] = sessionChats[board.id] || []); }
+
   const noOrphan = t => String(t ?? '').replace(/ ([✦♡★☆✧]+)$/, '\u00a0$1');
-  function addMsg(who, text, acts = []) {
+
+  function addMsg(who, text, acts = [], image = null) {
     if (!board) return;
     const clean = cleanMsgText(text);
     const nextLabels = (acts || []).filter(a => a && a.cls === 'next' && a.label && !/Follow-up suggestion/i.test(a.label)).map(a => a.label);
-    const log = chatLog(), m = { who, text: who === 'mochi' ? noOrphan(clean) : clean, t: Date.now(), ...(nextLabels.length ? { next: nextLabels } : {}) }, max = +settings.chatMax || 60;
-    log.push(m); if (log.length > max) log.splice(0, log.length - max); if (settings.chatKeep === 'board') save();
-    const list = $('mcList'); list.querySelector('.mc-empty')?.remove(); list.appendChild(msgEl({ ...m, acts })); list.scrollTop = list.scrollHeight;
+    const session = getActiveSession();
+    if (who === 'me' && (!session.title || session.title === 'New Chat') && clean) {
+      session.title = deriveTitle(clean);
+    }
+    const log = session.messages;
+    const m = {
+      who,
+      text: who === 'mochi' ? noOrphan(clean) : clean,
+      t: Date.now(),
+      ...(image ? { image } : {}),
+      ...(nextLabels.length ? { next: nextLabels } : {})
+    };
+    const max = +settings.chatMax || 60;
+    log.push(m);
+    if (log.length > max) log.splice(0, log.length - max);
+    session.t = Date.now();
+    if (settings.chatKeep === 'board') {
+      board.chat = log;
+      save();
+    }
+    const list = $('mcList');
+    list.querySelector('.mc-empty')?.remove();
+    list.appendChild(msgEl({ ...m, acts }));
+    list.scrollTop = list.scrollHeight;
   }
+
   function typing(on, label) {
-    $('mcList').querySelector('.typing-row')?.remove();
-    $('mcList').querySelector('.typing')?.remove();
+    $('mcList')?.querySelector('.typing-row')?.remove();
+    $('mcList')?.querySelector('.typing')?.remove();
     clearTimeout(doingTimer);
-    $('mcStatus').textContent = on ? (label || 'thinking') + '…' : '';
-    if (on) {
+    if ($('mcStatus')) $('mcStatus').textContent = on ? (label || 'thinking') + '…' : 'AI Creative Partner';
+    if (on && $('mcList')) {
       const row = document.createElement('div');
       row.className = 'mc-row mochi typing-row';
       const d = document.createElement('div');
@@ -2499,9 +2989,36 @@
       showDoing(label || 'thinking');
     }
   }
-  $('mcForm').onsubmit = e => { e.preventDefault(); const q = $('mcInput').value.trim(); if (!q) return; $('mcInput').value = ''; $('mcInput').style.height = ''; $('mcInput').placeholder = 'Ask Second Brain… “group these by theme”'; ask(q); };
+
+  $('mcForm').onsubmit = e => {
+    e.preventDefault();
+    const q = $('mcInput').value.trim();
+    const hasImg = !!stagedAttachment;
+    if (!q && !hasImg) return;
+    const promptText = q || 'Take a look at this image ✦';
+    const imageToSend = stagedAttachment ? stagedAttachment.dataUrl : null;
+
+    $('mcInput').value = '';
+    $('mcInput').style.height = '42px';
+    $('mcInput').style.overflowY = 'hidden';
+    $('mcInput').placeholder = 'Ask Second Brain… “group these by theme”';
+    stagedAttachment = null;
+    if (fileInput) fileInput.value = '';
+    if (attachTray) {
+      attachTray.hidden = true;
+      attachTray.style.display = 'none';
+    }
+
+    ask(promptText, false, imageToSend);
+  };
   $('mcInput').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('mcForm').requestSubmit(); } if (e.key === 'Escape') { mochiOpen(false); e.stopPropagation(); } };
-  $('mcInput').oninput = () => { const t = $('mcInput'); t.style.height = 'auto'; t.style.height = Math.min(120, t.scrollHeight) + 'px'; };
+  $('mcInput').oninput = () => {
+    const t = $('mcInput');
+    t.style.height = '42px';
+    const newH = Math.min(120, t.scrollHeight);
+    t.style.height = Math.max(42, newH) + 'px';
+    t.style.overflowY = t.scrollHeight > 120 ? 'auto' : 'hidden';
+  };
   $('mChat').addEventListener('pointerdown', e => e.stopPropagation());
   $('mChat').addEventListener('wheel', e => e.stopPropagation(), { passive: true });
   // what Mochi sees: the cards (trimmed), where they are, what's selected, and what's in Unsorted
@@ -2538,14 +3055,15 @@
     const what = /mobbin/i.test(q) ? 'Mobbin lives in your Claude account, and I can only reach it from the Mac app.' : /higgsfield|photo|picture|image/i.test(q) ? 'Making pictures with Higgsfield happens in the Mac app, where I can check the price with you first.' : 'I think with Claude Code, and that lives in the Mac app.';
     say(`I'd love to help with that! ${what} Download me and I'll connect to your Claude, Mobbin and Higgsfield ✦`, 0, DL);
   }
-  async function ask(q, confirmed = false) {
+  async function ask(q, confirmed = false, image = null) {
     if (!chatOpen()) mochiOpen(true);
-    if (!confirmed) addMsg('me', q); else addMsg('mochi', 'Making it… this can take a moment ✦');
+    if (!confirmed) addMsg('me', q, [], image); else addMsg('mochi', 'Making it… this can take a moment ✦');
     if (!settings.ai) return offlineMochi(q, "My thinking is switched off in Settings, so I can only do simple tidying.");
     if (!confirmed && /\b(site ?map|page tree|journey map|customer path|experience map|mind ?map|brainstorm map)\b/i.test(q) && offlineRecipe(q)) return;
     $('mochi').classList.add('thinking'); goo.think(true); favGoo?.think(true); typing(true, confirmed ? 'making it' : doingLabel(q));
     try {
-      const raw = await MB.ask((window.mochiName && window.mochiName !== 'Mochi' ? `(The person named you ${window.mochiName}. That's your name now; sign off and refer to yourself that way.) ` : '') + q, snapshot(), confirmed, { mobbin: settings.mobbin, higgs: settings.higgs });
+      const promptText = (window.mochiName && window.mochiName !== 'Mochi' ? `(The person named you ${window.mochiName}. That's your name now; sign off and refer to yourself that way.) ` : '') + q + (image ? ' [An image was attached by user]' : '');
+      const raw = await MB.ask(promptText, snapshot(), confirmed, { mobbin: settings.mobbin, higgs: settings.higgs, image });
       typing(false);
       await applyMochi(parse(raw), q);
     }

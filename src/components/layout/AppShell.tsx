@@ -38,7 +38,7 @@ export function AppShell() {
               ? 'flex flex-col overflow-hidden'
               : `rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-sm)] ${
                   isCanvas
-                    ? 'p-2.5 flex flex-col overflow-hidden'
+                    ? 'p-2 flex flex-col overflow-hidden'
                     : 'overflow-y-auto px-4 py-4 md:px-6 md:py-6'
                 }`
           }`}

@@ -178,12 +178,12 @@ export function CanvasPage() {
   }, [handleGenerateCanvasImage, showToast])
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#131118]">
+    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[#131118] shadow-[var(--shadow-sm)]">
       <iframe
         ref={iframeRef}
-        src="/mochiboard/index.html?v=sb17"
+        src="/mochiboard/index.html?v=sb21"
         title="Canvas"
-        className="h-full w-full border-0"
+        className="h-full w-full border-0 rounded-2xl"
         allow="microphone; camera; clipboard-read; clipboard-write"
       />
     </div>

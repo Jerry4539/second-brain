@@ -864,7 +864,7 @@ export async function handleMochiNativeAsk(
   rawPrompt: string,
   snapshot: MochiBoardSnapshot,
   _confirmed = false,
-  _opts: { mobbin?: boolean; higgs?: boolean } = {},
+  _opts: { mobbin?: boolean; higgs?: boolean; image?: string } = {},
   callbacks: MochiHostCallbacks = {},
 ): Promise<string> {
   const prompt = rawPrompt.replace(/^\(The person named you [^)]+\)\s*/i, '').trim()
@@ -872,6 +872,18 @@ export async function handleMochiNativeAsk(
   const cards = snapshot?.cards || []
   const selectedCards = cards.filter((c) => c.selected)
   const unsortedCards = snapshot?.unsorted || []
+
+  // Check if image is attached and user wants to add/pin it
+  if (_opts?.image && /\b(pin|add|place|put|drop|insert|use this)\b/i.test(lower)) {
+    const maxX = cards.length ? Math.max(...cards.map(c => c.x + (c.w || 260))) : 0
+    const minY = cards.length ? Math.min(...cards.map(c => c.y)) : 100
+    return JSON.stringify({
+      say: 'I pinned your image onto the canvas ✦',
+      add: [
+        { type: 'image', src: _opts.image, x: maxX + 60, y: minY, w: 280, h: 220, tagText: 'Pinned from Chat' }
+      ]
+    })
+  }
 
   // 0A. Quick Command / Follow-up: "Write real copy for these cards" / "Write the real copy"
   if (/\b(write (the )?real copy|real copy for|improve copy|rewrite copy|fill in real text|better copy)\b/i.test(lower)) {
