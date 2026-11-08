@@ -3545,7 +3545,7 @@ html.native .dv-bar {
 }
 
 .set-panel {
-  width: min(560px, calc(100vw - 40px));
+  width: min(640px, calc(100vw - 40px));
   max-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
@@ -3580,7 +3580,7 @@ html.native .dv-bar {
 }
 
 .set-panel {
-  height: min(600px, calc(100vh - 60px));
+  height: min(650px, calc(100vh - 60px));
 }
 
 .set-tabs {
@@ -18282,8 +18282,531 @@ body.dark #settings .set-body>section:not([hidden]):not(.tab-off) {
 #settings .set-body>section[data-tab="mochi"],
 #settings .set-body>section[data-tab="board"],
 #settings .set-body>section[data-tab="widgets"],
-#settings .set-body>section[data-tab="toolbar"] {
+#settings .set-body>section[data-tab="toolbar"],
+#settings .set-body>section[data-tab="helpers"],
+#settings .set-body>section.set-card-theme,
+#settings .set-body>section.set-card-ai {
   grid-column: 1 / -1;
+}
+
+/* ========================================================
+   REBUILT SETTINGS CARDS: THEME & AI TOOLS
+   ======================================================== */
+
+/* Card Headers & Badges */
+#settings .set-section-header {
+  margin-bottom: 16px;
+}
+
+#settings .ssh-badge {
+  display: inline-block;
+  font: 700 9.5px/1 var(--font);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #ea6b95;
+  background: rgba(234, 107, 149, .12);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+#settings .ssh-badge.ai-badge {
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, .12);
+}
+
+#settings .set-section-header h3 {
+  margin: 0 0 4px;
+  font: 700 17px/1.2 var(--font);
+  letter-spacing: -.02em;
+  color: var(--ink);
+  text-transform: none;
+}
+
+#settings .set-section-header p {
+  margin: 0;
+  font: 400 13px/1.4 var(--font);
+  color: var(--ink-soft);
+}
+
+/* --- CARD 1: LOOK & THEME CARD --- */
+#settings .set-card-theme {
+  padding: 20px 22px !important;
+}
+
+#settings .theme-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin-top: 12px;
+}
+
+#settings .theme-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  border-radius: 16px !important;
+  background: rgba(120, 80, 120, .04) !important;
+  border: 2px solid rgba(120, 80, 120, .1) !important;
+  cursor: pointer !important;
+  transition: all .2s cubic-bezier(.2, .9, .3, 1.2) !important;
+  text-align: left;
+  outline: none !important;
+  box-sizing: border-box !important;
+  position: relative;
+}
+
+body.dark #settings .theme-card {
+  background: rgba(255, 255, 255, .03) !important;
+  border-color: rgba(255, 255, 255, .08) !important;
+}
+
+#settings .theme-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(234, 107, 149, .35) !important;
+  background: rgba(120, 80, 120, .07) !important;
+  box-shadow: 0 6px 18px rgba(120, 80, 120, .08);
+}
+
+body.dark #settings .theme-card:hover {
+  border-color: rgba(244, 114, 182, .35) !important;
+  background: rgba(255, 255, 255, .06) !important;
+}
+
+#settings .theme-card.on {
+  background: #ffffff !important;
+  border-color: #ea6b95 !important;
+  box-shadow: 0 8px 24px rgba(234, 107, 149, .2), 0 0 0 1px #ea6b95 !important;
+}
+
+body.dark #settings .theme-card.on {
+  background: #231d2a !important;
+  border-color: #f472b6 !important;
+  box-shadow: 0 8px 24px rgba(244, 114, 182, .25), 0 0 0 1px #f472b6 !important;
+}
+
+/* Theme Illustration */
+#settings .theme-illustration {
+  height: 58px;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+}
+
+#settings .theme-illustration.light-preview {
+  background: #fbf9fb;
+  background-image: radial-gradient(#d3c6d6 1.2px, transparent 1.2px);
+  background-size: 8px 8px;
+}
+
+#settings .theme-illustration.dark-preview {
+  background: #18141e;
+  background-image: radial-gradient(#3a3346 1.2px, transparent 1.2px);
+  background-size: 8px 8px;
+}
+
+#settings .theme-illustration.system-preview {
+  display: flex;
+  background: #201a28;
+}
+
+#settings .theme-illustration.system-preview .ti-half {
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+
+#settings .theme-illustration.system-preview .ti-half.light-half {
+  background: #fbf9fb;
+  background-image: radial-gradient(#d3c6d6 1.2px, transparent 1.2px);
+  background-size: 8px 8px;
+  border-right: 1px solid rgba(120, 80, 120, .2);
+}
+
+#settings .theme-illustration.system-preview .ti-half.dark-half {
+  background: #18141e;
+  background-image: radial-gradient(#3a3346 1.2px, transparent 1.2px);
+  background-size: 8px 8px;
+}
+
+#settings .ti-mini-panel {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 50%;
+  height: 28px;
+  border-radius: 6px;
+  padding: 5px 6px;
+  box-sizing: border-box;
+}
+
+#settings .light-preview .ti-mini-panel {
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(120, 80, 120, .15);
+  border: 1px solid rgba(120, 80, 120, .1);
+}
+
+#settings .dark-preview .ti-mini-panel {
+  background: #2a2334;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
+  border: 1px solid rgba(255, 255, 255, .08);
+}
+
+#settings .ti-mini-line {
+  height: 4px;
+  border-radius: 999px;
+  width: 75%;
+}
+
+#settings .light-preview .ti-mini-line {
+  background: #e2d8e4;
+}
+
+#settings .dark-preview .ti-mini-line {
+  background: #4a3e56;
+}
+
+#settings .ti-mini-cursor {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  width: 9px;
+  height: 9px;
+  border-left: 2px solid #ea6b95;
+  border-top: 2px solid #ea6b95;
+  transform: rotate(-35deg);
+}
+
+#settings .dark-preview .ti-mini-cursor {
+  border-left-color: #f472b6;
+  border-top-color: #f472b6;
+}
+
+#settings .theme-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#settings .theme-label {
+  font: 700 13px/1.2 var(--font) !important;
+  color: var(--ink) !important;
+}
+
+#settings .theme-desc {
+  font: 400 11.5px/1.3 var(--font) !important;
+  color: var(--ink-soft) !important;
+}
+
+#settings .theme-card.on .theme-label {
+  color: #ea6b95 !important;
+}
+
+body.dark #settings .theme-card.on .theme-label {
+  color: #f472b6 !important;
+}
+
+#settings .theme-radio-pill {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(120, 80, 120, .25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s ease;
+  background: rgba(255, 255, 255, .7);
+}
+
+body.dark #settings .theme-radio-pill {
+  border-color: rgba(255, 255, 255, .2);
+  background: rgba(0, 0, 0, .4);
+}
+
+#settings .theme-card.on .theme-radio-pill {
+  border-color: #ea6b95;
+  background: #ea6b95;
+}
+
+body.dark #settings .theme-card.on .theme-radio-pill {
+  border-color: #f472b6;
+  background: #f472b6;
+}
+
+#settings .theme-card.on .theme-radio-pill::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* --- CARD 2: SECOND BRAIN AI TOOLS CARD --- */
+#settings .set-card-ai {
+  padding: 22px 24px !important;
+}
+
+#settings .ai-status-group {
+  margin-bottom: 18px;
+}
+
+#settings .ai-status-label {
+  font: 700 10.5px/1 var(--font);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+#settings .set-card-ai .conns,
+#settings #conns {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  margin: 0 !important;
+}
+
+#settings .set-card-ai .conn,
+#settings #conns .conn {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 14px !important;
+  border-radius: 14px !important;
+  background: rgba(120, 80, 120, .05) !important;
+  border: 1px solid rgba(120, 80, 120, .1) !important;
+  font: 600 13px/1.2 var(--font) !important;
+  color: var(--ink) !important;
+  box-sizing: border-box !important;
+  transition: all .2s ease !important;
+}
+
+body.dark #settings .set-card-ai .conn,
+body.dark #settings #conns .conn {
+  background: rgba(255, 255, 255, .04) !important;
+  border-color: rgba(255, 255, 255, .08) !important;
+  color: #f3f4f6 !important;
+}
+
+#settings .set-card-ai .conn .dot,
+#settings #conns .conn .dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, .7) !important;
+  flex: 0 0 8px !important;
+}
+
+#settings .set-card-ai .conn em,
+#settings #conns .conn em {
+  margin-left: auto !important;
+  font: 700 9.5px/1 var(--font) !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  color: #10b981 !important;
+  background: rgba(16, 185, 129, .12) !important;
+  padding: 3px 7px !important;
+  border-radius: 6px !important;
+}
+
+body.dark #settings .set-card-ai .conn em,
+body.dark #settings #conns .conn em {
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, .18) !important;
+}
+
+/* Feature Toggles & Control Rows */
+#settings .ai-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#settings .set-card-toggle,
+#settings .set-card-control {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  padding: 12px 16px !important;
+  border-radius: 14px !important;
+  background: rgba(120, 80, 120, .03) !important;
+  border: 1px solid rgba(120, 80, 120, .08) !important;
+  box-sizing: border-box !important;
+  transition: background .2s ease, border-color .2s ease !important;
+}
+
+body.dark #settings .set-card-toggle,
+body.dark #settings .set-card-control {
+  background: rgba(255, 255, 255, .025) !important;
+  border-color: rgba(255, 255, 255, .06) !important;
+}
+
+#settings .set-card-toggle:hover,
+#settings .set-card-control:hover {
+  background: rgba(120, 80, 120, .06) !important;
+  border-color: rgba(120, 80, 120, .14) !important;
+}
+
+body.dark #settings .set-card-toggle:hover,
+body.dark #settings .set-card-control:hover {
+  background: rgba(255, 255, 255, .045) !important;
+  border-color: rgba(255, 255, 255, .1) !important;
+}
+
+#settings .sct-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+#settings .sct-icon {
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(120, 80, 120, .07);
+  flex-shrink: 0;
+}
+
+body.dark #settings .sct-icon {
+  background: rgba(255, 255, 255, .06);
+}
+
+#settings .sct-info b {
+  display: block;
+  font: 600 13.5px/1.3 var(--font);
+  color: var(--ink);
+}
+
+#settings .sct-info small {
+  display: block;
+  margin-top: 2px;
+  font: 400 12px/1.35 var(--font);
+  color: var(--ink-soft);
+}
+
+/* Number & Resolution Segments */
+#settings .seg-steps,
+#settings .seg-res {
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+#settings .seg-steps button,
+#settings .seg-res button {
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  min-width: 28px !important;
+  text-align: center !important;
+  transition: all .15s ease !important;
+}
+
+#settings .seg-steps button.on,
+#settings .seg-res button.on {
+  background: #ea6b95 !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(234, 107, 149, .35) !important;
+}
+
+body.dark #settings .seg-steps button.on,
+body.dark #settings .seg-res button.on {
+  background: #f472b6 !important;
+  color: #1a1520 !important;
+  box-shadow: 0 2px 8px rgba(244, 114, 182, .4) !important;
+}
+
+/* Footer Banner */
+#settings .set-footer-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, .08);
+  border: 1px solid rgba(16, 185, 129, .2);
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+body.dark #settings .set-footer-banner {
+  background: rgba(16, 185, 129, .1);
+  border-color: rgba(16, 185, 129, .25);
+}
+
+#settings .sfb-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+#settings .sfb-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, .8);
+  flex-shrink: 0;
+}
+
+#settings .sfb-refresh-btn {
+  font-weight: 700;
+  font-size: 11.5px;
+  color: #059669;
+  cursor: pointer;
+  background: rgba(16, 185, 129, .15);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 0;
+  white-space: nowrap;
+  transition: background .15s;
+}
+
+body.dark #settings .sfb-refresh-btn {
+  color: #34d399;
+  background: rgba(16, 185, 129, .2);
+}
+
+#settings .sfb-refresh-btn:hover {
+  background: rgba(16, 185, 129, .25);
+}
+
+@media (max-width: 600px) {
+  #settings .set-card-ai .conns,
+  #settings #conns,
+  #settings .theme-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #settings .set-card-control {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  #settings .seg-steps,
+  #settings .seg-res {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
 }
 
 /* Row & Swatch overflow fixes inside Settings Bento Cards */

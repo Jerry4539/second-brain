@@ -482,10 +482,12 @@ function EmailDraftCard({
 function CodeBlock({
   code,
   language,
+  title,
   onOpenArtifact,
 }: {
   code: string
   language: string
+  title?: string
   onOpenArtifact?: (artifact: ArtifactPayload) => void
 }) {
   const [copied, setCopied] = useState(false)
@@ -526,13 +528,14 @@ function CodeBlock({
   const isPlainTextOrPrompt = !looksLikeCode
   const [wrapLines, setWrapLines] = useState(isPlainTextOrPrompt)
   const isPreviewable = langLower === 'html' || langLower === 'svg'
-  const headerLabel =
+  const baseLabel =
     LANG_DISPLAY_MAP[langLower] ||
     (langLower
       ? langLower.charAt(0).toUpperCase() + langLower.slice(1)
       : looksLikeCode
       ? 'Code'
       : 'Plain text')
+  const headerLabel = title ? `${baseLabel} · ${title}` : baseLabel
 
   if (parsedEmail) {
     return <EmailDraftCard initialDraft={parsedEmail} onOpenArtifact={onOpenArtifact} />
@@ -559,9 +562,11 @@ function CodeBlock({
     if (!onOpenArtifact) return
     onOpenArtifact({
       id: `artifact-${Date.now()}`,
-      title: isPreviewable
-        ? `Interactive ${langLower.toUpperCase()} Preview`
-        : `${headerLabel} Artifact (${lines.length} lines)`,
+      title:
+        title ||
+        (isPreviewable
+          ? `Interactive ${langLower.toUpperCase()} Preview`
+          : `${headerLabel} Artifact (${lines.length} lines)`),
       kind: langLower === 'html' ? 'html' : langLower === 'svg' ? 'svg' : 'code',
       language: language || 'text',
       content: editableCode,
@@ -569,22 +574,22 @@ function CodeBlock({
   }
 
   return (
-    <div className="my-4 overflow-hidden rounded-2xl border border-white/10 bg-[#252529] text-zinc-100 shadow-md">
+    <div className="my-4 w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-white/10 bg-[#252529] text-zinc-100 shadow-md">
       {/* Minimal Header Bar (`</> Plain text` / `</> Java` + Edit / Wrap / Copy / Canvas icons) */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#2c2c31] px-4 py-2.5 text-xs text-zinc-300">
-        <div className="flex items-center gap-2">
-          <Code2 size={14} className="text-zinc-400" />
-          <span className="font-sans text-[12.5px] font-medium tracking-tight text-zinc-200">
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#2c2c31] px-4 py-2.5 text-xs text-zinc-300 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 truncate">
+          <Code2 size={14} className="shrink-0 text-zinc-400" />
+          <span className="truncate font-sans text-[12.5px] font-medium tracking-tight text-zinc-200">
             {headerLabel}
           </span>
           {!isPlainTextOrPrompt && lines.length > 1 && (
-            <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
+            <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
               {lines.length} lines
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {onOpenArtifact && (isPreviewable || lines.length >= 4) && (
             <button
               type="button"
@@ -659,27 +664,27 @@ function CodeBlock({
 
       {/* Body: Directly Editable Plain-Text / Prompt Card OR Syntax-Highlighted / Editable Code */}
       {isPlainTextOrPrompt || isEditingCode ? (
-        <div className="px-5 py-4">
+        <div className="w-full min-w-0 max-w-full px-5 py-4">
           <textarea
             value={editableCode}
             onChange={(e) => setEditableCode(e.target.value)}
             rows={Math.min(18, Math.max(3, lines.length))}
             spellCheck={isPlainTextOrPrompt}
-            className="w-full resize-y bg-transparent font-mono text-[13.5px] leading-7 text-zinc-100 focus:outline-none selection:bg-[var(--accent)]/30"
+            className="w-full max-w-full min-w-0 resize-y bg-transparent font-mono text-[13.5px] leading-7 text-zinc-100 focus:outline-none selection:bg-[var(--accent)]/30"
           />
         </div>
       ) : (
-        <div className="max-h-[440px] overflow-auto px-4 py-3.5 font-mono text-[13px] leading-6 text-zinc-100 selection:bg-[var(--accent)]/30">
-          <table className="w-full border-collapse">
+        <div className="w-full min-w-0 max-w-full max-h-[440px] overflow-x-auto overflow-y-auto px-4 py-3.5 font-mono text-[13px] leading-6 text-zinc-100 selection:bg-[var(--accent)]/30 scrollbar-thin">
+          <table className="w-full min-w-full border-collapse">
             <tbody>
               {lines.map((line, idx) => (
                 <tr key={idx} className="hover:bg-white/[0.03]">
-                  <td className="w-8 select-none pr-3.5 align-top text-right text-[11px] text-zinc-500">
+                  <td className="w-8 shrink-0 select-none pr-3.5 align-top text-right text-[11px] text-zinc-500">
                     {idx + 1}
                   </td>
                   <td
                     className={
-                      wrapLines ? 'whitespace-pre-wrap break-words' : 'whitespace-pre'
+                      wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'
                     }
                   >
                     {highlightCodeLine(line, langLower)}
@@ -1110,12 +1115,113 @@ function normalizeAllCapsParagraph(text: string): string {
   return text
 }
 
+function parseFenceInfo(info: string): { language: string; title?: string } {
+  const trimmed = info.trim()
+  if (!trimmed) return { language: 'text' }
+
+  // 1. Colon pattern: `css:style.css`
+  const colonMatch = trimmed.match(/^([a-zA-Z0-9_+-]+):([^\n\r]+)$/)
+  if (colonMatch) {
+    return { language: colonMatch[1].toLowerCase(), title: colonMatch[2].trim() }
+  }
+
+  // 2. Parentheses, brackets, or comments: `css (Dark Mode)`, `css [theme]`, `css /* Dark Mode */`
+  const parenMatch = trimmed.match(/^([a-zA-Z0-9_+-]+)\s*[\(\[\/\*]+([^\n\r\)\*\/]+)[\)\]\*\/]*$/)
+  if (parenMatch) {
+    return { language: parenMatch[1].toLowerCase(), title: parenMatch[2].trim() }
+  }
+
+  // 3. Space-separated title/filename: `html title="index.html"`, `css - Dark Mode`
+  const spaceMatch = trimmed.match(/^([a-zA-Z0-9_+-]+)\s+(.+)$/)
+  if (spaceMatch) {
+    const rawTitle = spaceMatch[2].replace(/^(?:title=|-)\s*["']?|["']$/g, '').trim()
+    return { language: spaceMatch[1].toLowerCase(), title: rawTitle || undefined }
+  }
+
+  return { language: trimmed.toLowerCase() }
+}
+
+function detectUnfencedCode(paragraph: string): { isCode: boolean; language: string } {
+  const trimmed = paragraph.trim()
+  if (!trimmed || trimmed.length < 15) return { isCode: false, language: '' }
+
+  const lines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
+  if (lines.length < 2) return { isCode: false, language: '' }
+
+  // 1. CSS / SCSS detection
+  const hasMediaOrKeyframes = /@(?:media|keyframes|import|supports|font-face)\b/i.test(trimmed)
+  const hasCssSelectorsWithBraces = /(?:^|\n)\s*(?:[.#a-zA-Z0-9:_-]+|\*|::-webkit-[a-z-]+|::-moz-[a-z-]+|@media[^{]+)\s*\{/m.test(trimmed)
+  const hasCssProperties = /(?:color|background|font-family|margin|padding|display|position|border|width|height|opacity|z-index|transform|transition|filter|text-align|box-shadow|overflow|border-radius)\s*:\s*[^;]+;/i.test(trimmed)
+  const hasCssComment = /\/\*[\s\S]*?\*\//.test(trimmed)
+
+  if (
+    (hasMediaOrKeyframes && (hasCssProperties || hasCssSelectorsWithBraces)) ||
+    (hasCssSelectorsWithBraces && hasCssProperties) ||
+    (hasCssComment && (hasCssProperties || hasCssSelectorsWithBraces))
+  ) {
+    return { isCode: true, language: 'css' }
+  }
+
+  // 2. HTML / XML / SVG detection
+  const hasHtmlDoctypeOrTags = /^<!DOCTYPE\s+html/i.test(trimmed) || /^<(?:html|head|body|div|style|script|svg|table|template|form|nav|header|footer)\b/i.test(trimmed)
+  const hasClosingTags = /<\/[a-zA-Z0-9_-]+>/.test(trimmed)
+  if (hasHtmlDoctypeOrTags && (hasClosingTags || lines.length >= 3)) {
+    return { isCode: true, language: 'html' }
+  }
+
+  // 3. JavaScript / TypeScript detection
+  const hasImportsOrExports = /^(?:import\s+.+from\s+['"]|export\s+(?:default\s+)?(?:const|let|var|function|class)\b)/m.test(trimmed)
+  const hasJsDeclarations = /(?:const|let|var)\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*=\s*/.test(trimmed)
+  const hasJsFunctions = /(?:function\s+[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(|\b[a-zA-Z_$][a-zA-Z0-9_$]*\s*=\s*(?:async\s*)?\([^)]*\)\s*=>)/.test(trimmed)
+  const hasJsApis = /(?:console\.(?:log|error|warn)|document\.(?:getElementById|querySelector|createElement)|window\.addEventListener)\b/.test(trimmed)
+
+  if (
+    (hasImportsOrExports || hasJsFunctions || hasJsDeclarations) &&
+    (hasJsApis || lines.some((l) => l.endsWith(';') || l.endsWith('{') || l.endsWith('}')))
+  ) {
+    return { isCode: true, language: 'javascript' }
+  }
+
+  // 4. JSON detection
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      JSON.parse(trimmed)
+      return { isCode: true, language: 'json' }
+    } catch {
+      // not valid JSON
+    }
+  }
+
+  // 5. Python detection
+  const hasPyDefOrClass = /^(?:def\s+[a-zA-Z_]\w*\s*\(|class\s+[a-zA-Z_]\w*(?:\([^)]*\))?\s*:)/m.test(trimmed)
+  const hasPyImports = /^(?:import\s+[a-zA-Z_]\w*|from\s+[a-zA-Z_]\w*\s+import\s+)/m.test(trimmed)
+  if ((hasPyDefOrClass || hasPyImports) && lines.some((l) => l.endsWith(':'))) {
+    return { isCode: true, language: 'python' }
+  }
+
+  // 6. SQL detection
+  const hasSqlKeywords = /^(?:SELECT\s+.+\s+FROM|INSERT\s+INTO|CREATE\s+TABLE|UPDATE\s+.+\s+SET|DELETE\s+FROM)\b/im.test(trimmed)
+  if (hasSqlKeywords && (lines.some((l) => l.endsWith(';')) || lines.length >= 2)) {
+    return { isCode: true, language: 'sql' }
+  }
+
+  // 7. General code block: multiple lines where majority end with semicolons or braces
+  const codePunctuationLineCount = lines.filter((l) => /[{};]$/.test(l)).length
+  if (lines.length >= 3 && codePunctuationLineCount / lines.length >= 0.6 && /[{}]/.test(trimmed)) {
+    return { isCode: true, language: 'code' }
+  }
+
+  return { isCode: false, language: '' }
+}
+
 export function MarkdownContent({ content, onOpenArtifact }: MarkdownContentProps) {
   if (!content) return null
 
   const tokens: ReactNode[] = []
-  // Match both closed ```lang ... ``` and streaming unclosed ```lang ... blocks
-  const codeBlockRegex = /```([a-zA-Z0-9_+-]*)[ \t]*\n([\s\S]*?)(?:```|$)/g
+  // Matches ``` or ~~~ with optional leading whitespace, any info string on the opening line,
+  // followed by code content, and closed by matching backticks or end of string.
+  const codeBlockRegex =
+    /(?:^|\n)[ \t]*([`~]{3,})[ \t]*([^\r\n]*)[\r\n]+([\s\S]*?)(?:(?:\r?\n)[ \t]*\1[ \t]*(?:\r?\n|$)|$)/g
   let lastIndex = 0
   let match: RegExpExecArray | null
 
@@ -1125,12 +1231,13 @@ export function MarkdownContent({ content, onOpenArtifact }: MarkdownContentProp
       tokens.push(renderTextBlocks(regularText, lastIndex, onOpenArtifact))
     }
 
-    const language = match[1].trim()
-    const code = match[2].replace(/\n+$/, '')
+    const fenceInfo = parseFenceInfo(match[2])
+    const code = match[3].replace(/\n+$/, '')
     tokens.push(
       <CodeBlock
         key={`cb-${match.index}`}
-        language={language}
+        language={fenceInfo.language}
+        title={fenceInfo.title}
         code={code}
         onOpenArtifact={onOpenArtifact}
       />,
@@ -1145,7 +1252,7 @@ export function MarkdownContent({ content, onOpenArtifact }: MarkdownContentProp
   }
 
   return (
-    <div className="space-y-4 text-[15px] leading-7 tracking-[-0.006em] text-[var(--text)]">
+    <div className="w-full min-w-0 max-w-full space-y-4 text-[15px] leading-7 tracking-[-0.006em] text-[var(--text)]">
       {tokens}
     </div>
   )
@@ -1249,211 +1356,279 @@ function renderTextBlocks(
   }
 
   const paragraphs = rawParagraphs
+  const renderedNodes: ReactNode[] = []
+  let pIndex = 0
+
+  while (pIndex < paragraphs.length) {
+    const trimmed = paragraphs[pIndex].trim()
+    if (!trimmed) {
+      pIndex++
+      continue
+    }
+
+    // Un-fenced code detection: auto-promote raw CSS/HTML/JS/code snippets into CodeBlock cards
+    const codeCheck = detectUnfencedCode(trimmed)
+    if (codeCheck.isCode) {
+      const codeParts = [trimmed]
+      let nextIdx = pIndex + 1
+      while (nextIdx < paragraphs.length) {
+        const nextTrimmed = paragraphs[nextIdx].trim()
+        if (!nextTrimmed) {
+          nextIdx++
+          continue
+        }
+        const nextCodeCheck = detectUnfencedCode(nextTrimmed)
+        if (
+          nextCodeCheck.isCode &&
+          (nextCodeCheck.language === codeCheck.language || codeCheck.language === 'code')
+        ) {
+          codeParts.push(nextTrimmed)
+          nextIdx++
+        } else {
+          break
+        }
+      }
+      renderedNodes.push(
+        <CodeBlock
+          key={`unfenced-code-${pIndex}`}
+          language={codeCheck.language}
+          code={codeParts.join('\n\n')}
+          onOpenArtifact={onOpenArtifact}
+        />,
+      )
+      pIndex = nextIdx
+      continue
+    }
+
+    if (/^(?:---|\*\*\*|___)$/.test(trimmed)) {
+      renderedNodes.push(<hr key={pIndex} className="my-5 border-[var(--border)]/80" />)
+      pIndex++
+      continue
+    }
+
+    // Single-line bold section heading (e.g., `**Image generation test prompt**` like ChatGPT)
+    if (!trimmed.includes('\n') && /^\*\*[^*]{3,90}\*\*[:]?$/.test(trimmed)) {
+      const cleanTitle = trimmed.replace(/^\*\*|\*\*[:]?$/g, '')
+      renderedNodes.push(
+        <h3
+          key={pIndex}
+          className="mt-5 mb-1.5 text-[16px] font-bold tracking-tight text-[var(--text)]"
+        >
+          {cleanTitle}
+        </h3>,
+      )
+      pIndex++
+      continue
+    }
+
+    if (trimmed.startsWith('# ')) {
+      renderedNodes.push(
+        <h1
+          key={pIndex}
+          className="mt-6 mb-2.5 text-xl font-bold tracking-tight text-[var(--text)]"
+        >
+          {renderInlineFormatting(trimmed.slice(2))}
+        </h1>,
+      )
+      pIndex++
+      continue
+    }
+    if (trimmed.startsWith('## ')) {
+      renderedNodes.push(
+        <h2
+          key={pIndex}
+          className="mt-5 mb-2 text-[17px] font-bold tracking-tight text-[var(--text)]"
+        >
+          {renderInlineFormatting(trimmed.slice(3))}
+        </h2>,
+      )
+      pIndex++
+      continue
+    }
+    if (trimmed.startsWith('### ')) {
+      renderedNodes.push(
+        <h3
+          key={pIndex}
+          className="mt-5 mb-1.5 text-[15.5px] font-bold tracking-tight text-[var(--text)]"
+        >
+          {renderInlineFormatting(trimmed.slice(4))}
+        </h3>,
+      )
+      pIndex++
+      continue
+    }
+    if (trimmed.startsWith('#### ')) {
+      renderedNodes.push(
+        <h4
+          key={pIndex}
+          className="mt-4 mb-1 text-xs font-bold uppercase tracking-wider text-[var(--muted)]"
+        >
+          {renderInlineFormatting(trimmed.slice(5))}
+        </h4>,
+      )
+      pIndex++
+      continue
+    }
+
+    // Blockquote `> ...` -> Elevated Attention / Callout Card (or Plain text card if it's a long prompt)
+    if (trimmed.startsWith('> ')) {
+      const quoteText = trimmed
+        .split('\n')
+        .map((l) => l.replace(/^>\s?/, ''))
+        .join('\n')
+      // If it's a long descriptive prompt inside a blockquote (> 220 chars and starts with Create/Generate/Imagine/A ), render as Plain text box
+      if (
+        quoteText.length > 220 &&
+        /^(?:Create|Generate|Imagine|A\s|An\s|Ultra-realistic|Cinematic|Photorealistic)/i.test(
+          quoteText.trim(),
+        )
+      ) {
+        renderedNodes.push(
+          <CodeBlock
+            key={`quote-prompt-${pIndex}`}
+            language="text"
+            code={quoteText}
+            onOpenArtifact={onOpenArtifact}
+          />,
+        )
+      } else {
+        renderedNodes.push(renderCalloutBlock(quoteText, pIndex))
+      }
+      pIndex++
+      continue
+    }
+
+    // Standalone Callout paragraph starting with `💡`, `⚠️`, `**Pro Tip:**`, `**Important:**`, `**Key Takeaway:**`
+    if (
+      /^(?:💡|⚠️|\*\*(?:Pro Tip|Important|Warning|Key Takeaway|Note|Security Alert|Security Advisory)\*\*[:]?|(?:Pro Tip|Important|Warning|Key Takeaway|Security Alert|Security Advisory)[:\s])/i.test(
+        trimmed,
+      )
+    ) {
+      renderedNodes.push(renderCalloutBlock(trimmed, pIndex))
+      pIndex++
+      continue
+    }
+
+    // Suppress orphaned "Summary Table:" headings if there's no valid multi-row table following
+    if (/^(?:\*\*)?(?:Summary Table|Table)(?:\*\*)?[:]?$/i.test(trimmed)) {
+      const nextP = paragraphs[pIndex + 1]?.trim() ?? ''
+      if (!nextP || !isMarkdownTable(nextP.split('\n'))) {
+        pIndex++
+        continue
+      }
+    }
+
+    // Auto-promote long quoted prompt paragraphs (`"Create an ultra-realistic..."`) into a ChatGPT `</> Plain text` card
+    if (
+      trimmed.length > 160 &&
+      ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith('“') && trimmed.endsWith('”')))
+    ) {
+      const unquoted = trimmed.slice(1, -1).trim()
+      renderedNodes.push(
+        <CodeBlock
+          key={`auto-prompt-${pIndex}`}
+          language="text"
+          code={unquoted}
+          onOpenArtifact={onOpenArtifact}
+        />,
+      )
+      pIndex++
+      continue
+    }
+
+    const lines = trimmed.split('\n')
+
+    if (isMarkdownTable(lines)) {
+      renderedNodes.push(renderMarkdownTable(lines, pIndex, onOpenArtifact))
+      pIndex++
+      continue
+    }
+
+    if (lines.every((line) => /^[-*]\s+\[[ xX]\]\s+/.test(line.trim()))) {
+      renderedNodes.push(
+        <ul key={pIndex} className="my-3 space-y-2 text-[var(--text)]">
+          {lines.map((line, i) => {
+            const checked = /^[-*]\s+\[[xX]\]/.test(line.trim())
+            const itemText = line.trim().replace(/^[-*]\s+\[[ xX]\]\s+/, '')
+            return (
+              <li key={i} className="flex items-start gap-2.5">
+                <span
+                  className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                    checked
+                      ? 'border-emerald-500 bg-emerald-500/20 text-emerald-500'
+                      : 'border-[var(--border)] bg-[var(--surface)]'
+                  }`}
+                >
+                  {checked ? '✓' : ''}
+                </span>
+                <span className={checked ? 'text-[var(--muted)] line-through' : ''}>
+                  {renderInlineFormatting(itemText)}
+                </span>
+              </li>
+            )
+          })}
+        </ul>,
+      )
+      pIndex++
+      continue
+    }
+
+    if (lines.every((line) => line.trim().startsWith('- ') || line.trim().startsWith('* '))) {
+      const items = lines.map((line) => line.trim().replace(/^[-*]\s+/, ''))
+      renderedNodes.push(
+        <ul
+          key={pIndex}
+          className="my-3 ml-5 list-disc space-y-2 marker:text-[var(--muted)] text-[var(--text)]"
+        >
+          {items.map((item, i) => (
+            <li key={i} className="pl-1 leading-7">
+              {renderInlineFormatting(item)}
+            </li>
+          ))}
+        </ul>,
+      )
+      pIndex++
+      continue
+    }
+
+    if (lines.every((line) => /^\d+\.\s+/.test(line.trim()))) {
+      const items = lines.map((line) => line.trim().replace(/^\d+\.\s+/, ''))
+      renderedNodes.push(
+        <ol
+          key={pIndex}
+          className="my-3 ml-5 list-decimal space-y-2 marker:font-semibold marker:text-[var(--muted)] text-[var(--text)]"
+        >
+          {items.map((item, i) => (
+            <li key={i} className="pl-1 leading-7">
+              {renderInlineFormatting(item)}
+            </li>
+          ))}
+        </ol>,
+      )
+      pIndex++
+      continue
+    }
+
+    const normalizedTrimmed = normalizeAllCapsParagraph(trimmed)
+    const normalizedLines = normalizedTrimmed.split('\n')
+
+    renderedNodes.push(
+      <p key={pIndex} className="leading-7 text-[var(--text)]">
+        {normalizedLines.map((line, lIndex) => (
+          <span key={lIndex}>
+            {renderInlineFormatting(line)}
+            {lIndex < normalizedLines.length - 1 && <br />}
+          </span>
+        ))}
+      </p>,
+    )
+    pIndex++
+  }
 
   return (
-    <div key={`block-${keyOffset}`} className="space-y-4">
-      {paragraphs.map((p, pIndex) => {
-        const trimmed = p.trim()
-        if (!trimmed) return null
-
-        if (/^(?:---|\*\*\*|___)$/.test(trimmed)) {
-          return <hr key={pIndex} className="my-5 border-[var(--border)]/80" />
-        }
-
-        // Single-line bold section heading (e.g., `**Image generation test prompt**` like ChatGPT)
-        if (
-          !trimmed.includes('\n') &&
-          /^\*\*[^*]{3,90}\*\*[:]?$/.test(trimmed)
-        ) {
-          const cleanTitle = trimmed.replace(/^\*\*|\*\*[:]?$/g, '')
-          return (
-            <h3
-              key={pIndex}
-              className="mt-5 mb-1.5 text-[16px] font-bold tracking-tight text-[var(--text)]"
-            >
-              {cleanTitle}
-            </h3>
-          )
-        }
-
-        if (trimmed.startsWith('# ')) {
-          return (
-            <h1
-              key={pIndex}
-              className="mt-6 mb-2.5 text-xl font-bold tracking-tight text-[var(--text)]"
-            >
-              {renderInlineFormatting(trimmed.slice(2))}
-            </h1>
-          )
-        }
-        if (trimmed.startsWith('## ')) {
-          return (
-            <h2
-              key={pIndex}
-              className="mt-5 mb-2 text-[17px] font-bold tracking-tight text-[var(--text)]"
-            >
-              {renderInlineFormatting(trimmed.slice(3))}
-            </h2>
-          )
-        }
-        if (trimmed.startsWith('### ')) {
-          return (
-            <h3
-              key={pIndex}
-              className="mt-5 mb-1.5 text-[15.5px] font-bold tracking-tight text-[var(--text)]"
-            >
-              {renderInlineFormatting(trimmed.slice(4))}
-            </h3>
-          )
-        }
-        if (trimmed.startsWith('#### ')) {
-          return (
-            <h4
-              key={pIndex}
-              className="mt-4 mb-1 text-xs font-bold uppercase tracking-wider text-[var(--muted)]"
-            >
-              {renderInlineFormatting(trimmed.slice(5))}
-            </h4>
-          )
-        }
-
-        // Blockquote `> ...` -> Elevated Attention / Callout Card (or Plain text card if it's a long prompt)
-        if (trimmed.startsWith('> ')) {
-          const quoteText = trimmed
-            .split('\n')
-            .map((l) => l.replace(/^>\s?/, ''))
-            .join('\n')
-          // If it's a long descriptive prompt inside a blockquote (> 220 chars and starts with Create/Generate/Imagine/A ), render as Plain text box
-          if (
-            quoteText.length > 220 &&
-            /^(?:Create|Generate|Imagine|A\s|An\s|Ultra-realistic|Cinematic|Photorealistic)/i.test(
-              quoteText.trim(),
-            )
-          ) {
-            return (
-              <CodeBlock
-                key={`quote-prompt-${pIndex}`}
-                language="text"
-                code={quoteText}
-                onOpenArtifact={onOpenArtifact}
-              />
-            )
-          }
-          return renderCalloutBlock(quoteText, pIndex)
-        }
-
-        // Standalone Callout paragraph starting with `💡`, `⚠️`, `**Pro Tip:**`, `**Important:**`, `**Key Takeaway:**`
-        if (
-          /^(?:💡|⚠️|\*\*(?:Pro Tip|Important|Warning|Key Takeaway|Note|Security Alert|Security Advisory)\*\*[:]?|(?:Pro Tip|Important|Warning|Key Takeaway|Security Alert|Security Advisory)[:\s])/i.test(
-            trimmed,
-          )
-        ) {
-          return renderCalloutBlock(trimmed, pIndex)
-        }
-
-        // Suppress orphaned "Summary Table:" headings if there's no valid multi-row table following
-        if (/^(?:\*\*)?(?:Summary Table|Table)(?:\*\*)?[:]?$/i.test(trimmed)) {
-          const nextP = paragraphs[pIndex + 1]?.trim() ?? ''
-          if (!nextP || !isMarkdownTable(nextP.split('\n'))) {
-            return null
-          }
-        }
-
-        // Auto-promote long quoted prompt paragraphs (`"Create an ultra-realistic..."`) into a ChatGPT `</> Plain text` card
-        if (
-          trimmed.length > 160 &&
-          ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-            (trimmed.startsWith('“') && trimmed.endsWith('”')))
-        ) {
-          const unquoted = trimmed.slice(1, -1).trim()
-          return (
-            <CodeBlock
-              key={`auto-prompt-${pIndex}`}
-              language="text"
-              code={unquoted}
-              onOpenArtifact={onOpenArtifact}
-            />
-          )
-        }
-
-        const lines = trimmed.split('\n')
-
-        if (isMarkdownTable(lines)) {
-          return renderMarkdownTable(lines, pIndex, onOpenArtifact)
-        }
-
-        if (lines.every((line) => /^[-*]\s+\[[ xX]\]\s+/.test(line.trim()))) {
-          return (
-            <ul key={pIndex} className="my-3 space-y-2 text-[var(--text)]">
-              {lines.map((line, i) => {
-                const checked = /^[-*]\s+\[[xX]\]/.test(line.trim())
-                const itemText = line.trim().replace(/^[-*]\s+\[[ xX]\]\s+/, '')
-                return (
-                  <li key={i} className="flex items-start gap-2.5">
-                    <span
-                      className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
-                        checked
-                          ? 'border-emerald-500 bg-emerald-500/20 text-emerald-500'
-                          : 'border-[var(--border)] bg-[var(--surface)]'
-                      }`}
-                    >
-                      {checked ? '✓' : ''}
-                    </span>
-                    <span className={checked ? 'text-[var(--muted)] line-through' : ''}>
-                      {renderInlineFormatting(itemText)}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          )
-        }
-
-        if (lines.every((line) => line.trim().startsWith('- ') || line.trim().startsWith('* '))) {
-          const items = lines.map((line) => line.trim().replace(/^[-*]\s+/, ''))
-          return (
-            <ul
-              key={pIndex}
-              className="my-3 ml-5 list-disc space-y-2 marker:text-[var(--muted)] text-[var(--text)]"
-            >
-              {items.map((item, i) => (
-                <li key={i} className="pl-1 leading-7">
-                  {renderInlineFormatting(item)}
-                </li>
-              ))}
-            </ul>
-          )
-        }
-        if (lines.every((line) => /^\d+\.\s+/.test(line.trim()))) {
-          const items = lines.map((line) => line.trim().replace(/^\d+\.\s+/, ''))
-          return (
-            <ol
-              key={pIndex}
-              className="my-3 ml-5 list-decimal space-y-2 marker:font-semibold marker:text-[var(--muted)] text-[var(--text)]"
-            >
-              {items.map((item, i) => (
-                <li key={i} className="pl-1 leading-7">
-                  {renderInlineFormatting(item)}
-                </li>
-              ))}
-            </ol>
-          )
-        }
-
-        const normalizedTrimmed = normalizeAllCapsParagraph(trimmed)
-        const normalizedLines = normalizedTrimmed.split('\n')
-
-        return (
-          <p key={pIndex} className="leading-7 text-[var(--text)]">
-            {normalizedLines.map((line, lIndex) => (
-              <span key={lIndex}>
-                {renderInlineFormatting(line)}
-                {lIndex < normalizedLines.length - 1 && <br />}
-              </span>
-            ))}
-          </p>
-        )
-      })}
+    <div key={`block-${keyOffset}`} className="w-full min-w-0 max-w-full space-y-4">
+      {renderedNodes}
     </div>
   )
 }

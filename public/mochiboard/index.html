@@ -401,8 +401,50 @@
     <div class="set-head"><h2>Settings</h2><button class="dv-btn" id="setClose" title="Close">×</button></div>
     <div class="seg set-tabs" id="setTabs"><button data-tab="general" class="on">General</button><button data-tab="mochi">Second Brain</button><button data-tab="helpers">AI Tools</button><button data-tab="board">Board</button><button data-tab="toolbar">Toolbar</button><button data-tab="widgets">Widgets</button></div>
     <div class="set-body">
-      <section data-tab="general"><h3>Look</h3>
-        <div class="set-row"><div><b>Theme</b><small>Light, dark, or whatever your Mac is using</small></div><div class="seg" data-seg="theme"><button data-v="light">Light</button><button data-v="dark">Dark</button><button data-v="system">Match my Mac</button></div></div>
+      <section data-tab="general" class="set-card-theme">
+        <div class="set-section-header">
+          <div class="ssh-left">
+            <span class="ssh-badge">APPEARANCE</span>
+            <h3>Look &amp; Theme</h3>
+            <p>Select your interface theme or sync automatically with your macOS system appearance.</p>
+          </div>
+        </div>
+        <div class="theme-grid seg" data-seg="theme">
+          <button data-v="light" class="theme-card">
+            <div class="theme-illustration light-preview">
+              <div class="ti-mini-panel"><div class="ti-mini-line"></div></div>
+              <div class="ti-mini-cursor"></div>
+            </div>
+            <div class="theme-details">
+              <span class="theme-label">Light</span>
+              <span class="theme-desc">Soft, bright &amp; clean</span>
+            </div>
+            <span class="theme-radio-pill"></span>
+          </button>
+          <button data-v="dark" class="theme-card">
+            <div class="theme-illustration dark-preview">
+              <div class="ti-mini-panel"><div class="ti-mini-line"></div></div>
+              <div class="ti-mini-cursor"></div>
+            </div>
+            <div class="theme-details">
+              <span class="theme-label">Dark</span>
+              <span class="theme-desc">Deep ink &amp; night mode</span>
+            </div>
+            <span class="theme-radio-pill"></span>
+          </button>
+          <button data-v="system" class="theme-card">
+            <div class="theme-illustration system-preview">
+              <div class="ti-half light-half"></div>
+              <div class="ti-half dark-half"></div>
+              <div class="ti-mini-split-icon"></div>
+            </div>
+            <div class="theme-details">
+              <span class="theme-label">Match my Mac</span>
+              <span class="theme-desc">Syncs with macOS</span>
+            </div>
+            <span class="theme-radio-pill"></span>
+          </button>
+        </div>
       </section>
       <section data-tab="general"><h3>Your cursor</h3>
         <div class="cur-prev" id="curPrev"><div class="mcur show demo"></div></div>
@@ -434,13 +476,86 @@
       </section>
       <section data-tab="helpers" id="whRow" hidden><h3>Voice memo writing</h3>
         <div class="set-row"><div><b>Whisper</b><small id="whState">Off.</small></div><button class="set-btn hot" id="whGo">Set it up</button></div></section>
-      <section data-tab="helpers"><h3>Second Brain AI Tools</h3>
-        <div class="conns" id="conns"></div>
-        <label class="set-row native-only"><div><b>Live Web &amp; UI Inspiration</b><small>Live research and app screen patterns</small></div><input type="checkbox" class="tgl" data-set="mobbin"></label>
-        <label class="set-row native-only"><div><b>Local AI Image Studio</b><small>Uses your local Second Brain Stable Diffusion engine directly on the Canvas.</small></div><input type="checkbox" class="tgl" data-set="higgs"></label>
-        <div class="set-row"><div><b>Image rendering steps</b><small>6–8 steps is crisp and fast for LCM/Turbo; 10–12 adds extra detail.</small></div><div class="seg" data-seg="imgSteps"><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button><button data-v="7">7</button><button data-v="8">8</button><button data-v="10">10</button><button data-v="12">12</button></div></div>
-        <div class="set-row"><div><b>Canvas image resolution</b><small>384px renders fastest; 512px gives higher canvas detail.</small></div><div class="seg" data-seg="imgRes"><button data-v="384">384px</button><button data-v="512">512px</button><button data-v="768">768px</button></div></div>
-        <div class="web-note web-only" hidden><button class="set-link get-app">Canvas</button></div><div class="set-note native-only">All Second Brain AI tools are active and connected locally on your Mac. <button class="set-link" id="recheck">Refresh status</button></div>
+      <section data-tab="helpers" class="set-card-ai">
+        <div class="set-section-header">
+          <div class="ssh-left">
+            <span class="ssh-badge ai-badge">SECOND BRAIN AI</span>
+            <h3>Second Brain AI Tools</h3>
+            <p>Local and live intelligence capabilities connected directly to your canvas.</p>
+          </div>
+        </div>
+
+        <div class="ai-status-group">
+          <div class="ai-status-label">ACTIVE LOCAL ENGINES</div>
+          <div class="conns" id="conns"></div>
+        </div>
+
+        <div class="ai-settings-group">
+          <label class="set-row set-card-toggle native-only">
+            <div class="sct-info">
+              <span class="sct-icon">🌐</span>
+              <div>
+                <b>Live Web &amp; UI Inspiration</b>
+                <small>Instant real-time app screens, patterns, and web inspiration on canvas</small>
+              </div>
+            </div>
+            <input type="checkbox" class="tgl" data-set="mobbin">
+          </label>
+
+          <label class="set-row set-card-toggle native-only">
+            <div class="sct-info">
+              <span class="sct-icon">🎨</span>
+              <div>
+                <b>Local AI Image Studio</b>
+                <small>Uses your local Second Brain Stable Diffusion engine directly on the Canvas.</small>
+              </div>
+            </div>
+            <input type="checkbox" class="tgl" data-set="higgs">
+          </label>
+
+          <div class="set-row set-card-control">
+            <div class="sct-info">
+              <span class="sct-icon">⚡</span>
+              <div>
+                <b>Image rendering steps</b>
+                <small>6–8 steps is crisp and fast for LCM/Turbo; 10–12 adds extra detail.</small>
+              </div>
+            </div>
+            <div class="seg seg-steps" data-seg="imgSteps">
+              <button data-v="4">4</button>
+              <button data-v="5">5</button>
+              <button data-v="6">6</button>
+              <button data-v="7">7</button>
+              <button data-v="8">8</button>
+              <button data-v="10">10</button>
+              <button data-v="12">12</button>
+            </div>
+          </div>
+
+          <div class="set-row set-card-control">
+            <div class="sct-info">
+              <span class="sct-icon">📐</span>
+              <div>
+                <b>Canvas image resolution</b>
+                <small>384px renders fastest; 512px gives higher canvas detail.</small>
+              </div>
+            </div>
+            <div class="seg seg-res" data-seg="imgRes">
+              <button data-v="384">384px</button>
+              <button data-v="512">512px</button>
+              <button data-v="768">768px</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="web-note web-only" hidden><button class="set-link get-app">Canvas</button></div>
+        <div class="set-footer-banner native-only">
+          <div class="sfb-left">
+            <span class="sfb-status-dot"></span>
+            <span>All Second Brain AI tools are active and connected locally on your Mac.</span>
+          </div>
+          <button class="set-link sfb-refresh-btn" id="recheck">Refresh status</button>
+        </div>
       </section>
       <section data-tab="widgets"><h3>Widgets</h3>
         <p class="set-lead">Turn on the ones you use. The Boards panel always stays, since it's home to your boards and Settings.</p>

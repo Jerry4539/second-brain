@@ -172,14 +172,14 @@ export function ClaudeResponseView({
   }
 
   return (
-    <div className="group flex w-full gap-4 py-1.5">
+    <div className="group flex w-full min-w-0 max-w-full gap-4 py-1.5">
       {/* Subtle Assistant Emblem */}
       <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 text-[var(--accent)]">
         <Sparkles size={14} />
       </div>
 
       {/* Open Editorial Canvas */}
-      <div className="min-w-0 flex-1 space-y-4">
+      <div className="min-w-0 max-w-full flex-1 space-y-4">
         {/* ================================================================= */}
         {/* 1. CLEAN, MINIMAL AGENT DECISION TRACE (Only when relevant)       */}
         {/* ================================================================= */}
@@ -590,7 +590,7 @@ export function ClaudeResponseView({
         {/* 3. OPEN EDITORIAL RESPONSE STREAM (Tables, Charts, Code, Prose)   */}
         {/* ================================================================= */}
         {displayMarkdown && (
-          <div className="text-[var(--text)]">
+          <div className="w-full min-w-0 max-w-full text-[var(--text)]">
             <MarkdownContent content={displayMarkdown} onOpenArtifact={onOpenArtifact} />
             {streaming && isLast && (
               <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded-full bg-[var(--accent)]" />
