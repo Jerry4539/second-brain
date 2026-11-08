@@ -52,24 +52,18 @@ export function Sidebar() {
       >
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-            {mascotChoice === 'cap' ? (
-              <Mascot
-                directions="/mascots/cap-directions.webp"
-                reactions="/mascots/cap-reactions.webp"
-                size={36}
-              />
-            ) : mascotChoice === 'mochi' ? (
+            {mascotChoice === 'mochi' ? (
               <img
                 src="/mochiboard/stamps/mochi-happy.png"
                 alt="Mochi Mascot"
                 className="h-8 w-8 object-contain transition-transform hover:scale-110 cursor-pointer"
               />
-            ) : mascotChoice === 'bot' ? (
-              <span className="text-2xl transition-transform hover:scale-110 cursor-pointer select-none" title="Cyber Bot">🤖</span>
-            ) : mascotChoice === 'fox' ? (
-              <span className="text-2xl transition-transform hover:scale-110 cursor-pointer select-none" title="Kitsune Fox">🦊</span>
             ) : (
-              <span className="text-2xl transition-transform hover:scale-110 cursor-pointer select-none" title="Cosmo Neko">🐱</span>
+              <Mascot
+                directions={`/mascots/${mascotChoice}-directions.webp`}
+                reactions={`/mascots/${mascotChoice}-reactions.webp`}
+                size={36}
+              />
             )}
           </div>
           {!collapsed && (

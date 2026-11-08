@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Mascot } from '../lib/page-mascot'
 import {
   Brain,
   Check,
@@ -158,46 +159,214 @@ const SAMPLER_PRESETS = [
   { value: 'dpm++2m', label: 'DPM++ 2M Karras', badge: '12–20 Steps' },
 ] as const
 
-const MASCOT_OPTIONS = [
-  {
-    id: 'cap',
-    name: 'Ash / Red Cap',
-    badge: 'Interactive Sprite',
-    desc: 'Animated 8-way eye tracking and joyful click reactions',
-    avatar: '/mascots/cap-directions.webp',
-    type: 'sprite',
-  },
-  {
-    id: 'mochi',
-    name: 'Mochi Blob',
-    badge: 'Soft & Calm',
-    desc: 'Original squishy pastel mascot with cute emotes',
-    avatar: '/mochiboard/stamps/mochi-happy.png',
-    type: 'image',
-  },
-  {
-    id: 'bot',
-    name: 'Cyber Bot',
-    badge: 'Neon AI',
-    desc: 'Futuristic synthetic assistant with glowing cyan optics',
-    icon: '🤖',
-    type: 'emoji',
-  },
+export interface MascotDefinition {
+  id: string
+  name: string
+  category: 'animals' | 'characters' | 'robots' | 'classic'
+  badge: string
+  desc: string
+  type: 'sprite' | 'image'
+}
+
+export const ALL_MASCOTS: MascotDefinition[] = [
+  // Animals (10)
   {
     id: 'fox',
     name: 'Kitsune Fox',
+    category: 'animals',
     badge: 'Clever Spirit',
-    desc: 'Sharp, creative spirit companion with fiery eyes',
-    icon: '🦊',
-    type: 'emoji',
+    desc: 'Spirited woodland fox with sharp creative instincts',
+    type: 'sprite',
   },
   {
     id: 'cat',
-    name: 'Cosmo Neko',
-    badge: 'Starlight Cat',
-    desc: 'Playful cosmic cat that purrs while you design',
-    icon: '🐱',
-    type: 'emoji',
+    name: 'Cosmo Cat',
+    category: 'animals',
+    badge: 'Playful Purr',
+    desc: 'Curious feline companion with starlight curiosity',
+    type: 'sprite',
+  },
+  {
+    id: 'dino',
+    name: 'Dino Kid',
+    category: 'animals',
+    badge: 'Prehistoric',
+    desc: 'Gentle, friendly green dinosaur that loves to build',
+    type: 'sprite',
+  },
+  {
+    id: 'bear',
+    name: 'Teddy Bear',
+    category: 'animals',
+    badge: 'Cozy Warmth',
+    desc: 'Warm, huggable companion for calm thinking sessions',
+    type: 'sprite',
+  },
+  {
+    id: 'bunny',
+    name: 'Bunny Hop',
+    category: 'animals',
+    badge: 'Springy',
+    desc: 'Quick, cheerful bunny always ready with fresh ideas',
+    type: 'sprite',
+  },
+  {
+    id: 'panda',
+    name: 'Zen Panda',
+    category: 'animals',
+    badge: 'Mindful',
+    desc: 'Peaceful bamboo connoisseur keeping your workflow tranquil',
+    type: 'sprite',
+  },
+  {
+    id: 'koala',
+    name: 'Koala Buddy',
+    category: 'animals',
+    badge: 'Relaxed',
+    desc: 'Chilled eucalyptus lover keeping ideas unhurried',
+    type: 'sprite',
+  },
+  {
+    id: 'penguin',
+    name: 'Penguin Tux',
+    category: 'animals',
+    badge: 'Frosty Sharp',
+    desc: 'Waddling arctic creator keeping your designs crisp',
+    type: 'sprite',
+  },
+  {
+    id: 'tiger',
+    name: 'Tiger Cub',
+    category: 'animals',
+    badge: 'Bold Spark',
+    desc: 'Energetic jungle dynamo bringing bravery to every canvas',
+    type: 'sprite',
+  },
+  {
+    id: 'otter',
+    name: 'River Otter',
+    category: 'animals',
+    badge: 'Splish Splash',
+    desc: 'Playful swimmer who loves stacking and arranging cards',
+    type: 'sprite',
+  },
+
+  // Characters & People (7)
+  {
+    id: 'cap',
+    name: 'Ash / Red Cap',
+    category: 'characters',
+    badge: 'Classic Hero',
+    desc: 'Iconic boy with the backward red cap and spirited expressions',
+    type: 'sprite',
+  },
+  {
+    id: 'wizard',
+    name: 'Spell Wizard',
+    category: 'characters',
+    badge: 'Arcane Mage',
+    desc: 'Pointed hat mystic conjuring clever ideas out of thin air',
+    type: 'sprite',
+  },
+  {
+    id: 'astronaut',
+    name: 'Cosmonaut',
+    category: 'characters',
+    badge: 'Space Explorer',
+    desc: 'Gold-visor space traveler mapping your infinite thought constellations',
+    type: 'sprite',
+  },
+  {
+    id: 'kamran',
+    name: 'Kamran Creator',
+    category: 'characters',
+    badge: 'Photo Character',
+    desc: 'Modern tech creator turned stylized avatar with stylish glasses',
+    type: 'sprite',
+  },
+  {
+    id: 'chef',
+    name: 'Master Chef',
+    category: 'characters',
+    badge: 'Toque Blanche',
+    desc: 'Culinary genius simmering up delicious creative recipes',
+    type: 'sprite',
+  },
+  {
+    id: 'scientist',
+    name: 'Lab Scientist',
+    category: 'characters',
+    badge: 'Eureka!',
+    desc: 'White coat inventor turning raw notes into breakthrough theories',
+    type: 'sprite',
+  },
+  {
+    id: 'knight',
+    name: 'Brave Knight',
+    category: 'characters',
+    badge: 'Paladin',
+    desc: 'Feathered helm guardian shielding your sacred ideas',
+    type: 'sprite',
+  },
+
+  // Robots & Retro Tech (6)
+  {
+    id: 'crt',
+    name: 'Retro CRT',
+    category: 'robots',
+    badge: 'Vintage Screen',
+    desc: 'Phosphor cathode terminal with adorable scanline eyes',
+    type: 'sprite',
+  },
+  {
+    id: 'drone',
+    name: 'Aero Drone',
+    category: 'robots',
+    badge: 'Quad Rotor',
+    desc: 'Hovering quad-copter scanning your boards from orbit',
+    type: 'sprite',
+  },
+  {
+    id: 'clockwork',
+    name: 'Clockwork Bot',
+    category: 'robots',
+    badge: 'Steampunk',
+    desc: 'Brass gearwork automaton ticking along to your tasks',
+    type: 'sprite',
+  },
+  {
+    id: 'toaster',
+    name: 'Happy Toaster',
+    category: 'robots',
+    badge: 'Golden Crisp',
+    desc: 'Smiling kitchen robot popping up warm golden thoughts',
+    type: 'sprite',
+  },
+  {
+    id: 'radio',
+    name: 'Boombox Radio',
+    category: 'robots',
+    badge: 'FM Tuner',
+    desc: 'Tuning into your creative wavelength with retro antenna vibes',
+    type: 'sprite',
+  },
+  {
+    id: 'rocket',
+    name: 'Star Rocket',
+    category: 'robots',
+    badge: 'Orbital Thrust',
+    desc: 'Streamlined rocket ship blasting your projects into the stratosphere',
+    type: 'sprite',
+  },
+
+  // Classic Mochi (1)
+  {
+    id: 'mochi',
+    name: 'Mochi Blob',
+    category: 'classic',
+    badge: 'Original Pastel',
+    desc: 'Original squishy pastel buddy with sweet gentle emotes',
+    type: 'image',
   },
 ] as const
 
@@ -225,6 +394,7 @@ export function SettingsPage() {
   const [mascotChoice, setMascotChoice] = useState<string>(() => {
     return localStorage.getItem('second-brain-mascot-choice') || 'cap'
   })
+  const [mascotCategory, setMascotCategory] = useState<'all' | 'animals' | 'characters' | 'robots' | 'classic'>('all')
   const [mascotCalm, setMascotCalm] = useState<'lively' | 'calm' | 'calmest'>('lively')
   const [mascotChatStyle, setMascotChatStyle] = useState<'quiet' | 'normal' | 'chatty'>('normal')
   const [canvasSnap, setCanvasSnap] = useState<boolean>(false)
@@ -866,17 +1036,90 @@ export function SettingsPage() {
             <div className="space-y-3">
               {/* Mascot Character Avatar Selection */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/45 p-3">
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-semibold text-[var(--text)]">
                       Choose Mascot Co-Pilot
                     </span>
-                    <Badge tone="accent">Active Avatar</Badge>
+                    <Badge tone="accent">24 Mascots</Badge>
                   </div>
                   <span className="text-[10px] text-[var(--muted)]">Canvas & Sidebar</span>
                 </div>
-                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  {MASCOT_OPTIONS.map((m) => {
+
+                {/* Live Interactive Mascot Stage */}
+                {(() => {
+                  const activeDef = ALL_MASCOTS.find((m) => m.id === mascotChoice) || ALL_MASCOTS[0]
+                  return (
+                    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 p-3 shadow-inner">
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-sm">
+                        {activeDef.id === 'mochi' ? (
+                          <img
+                            src="/mochiboard/stamps/mochi-happy.png"
+                            alt="Mochi Mascot"
+                            className="h-12 w-12 object-contain cursor-pointer transition-transform hover:scale-110"
+                          />
+                        ) : (
+                          <Mascot
+                            directions={`/mascots/${activeDef.id}-directions.webp`}
+                            reactions={`/mascots/${activeDef.id}-reactions.webp`}
+                            size={56}
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[var(--text)]">
+                            {activeDef.name}
+                          </span>
+                          <span className="rounded bg-[var(--accent)]/15 px-1.5 py-0.5 text-[9px] font-bold text-[var(--accent)]">
+                            {activeDef.badge}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-[var(--muted)] line-clamp-1">
+                          {activeDef.desc}
+                        </p>
+                        <p className="mt-1 text-[10px] text-[var(--accent)] font-medium">
+                          ✦ Live 8-way eye tracking active. Click mascot for reactions!
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Category Filter Pills */}
+                <div className="mb-2.5 flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+                  {(
+                    [
+                      { id: 'all', label: 'All (24)' },
+                      { id: 'animals', label: 'Animals (10)' },
+                      { id: 'characters', label: 'Characters (7)' },
+                      { id: 'robots', label: 'Robots & Tech (6)' },
+                      { id: 'classic', label: 'Original' },
+                    ] as const
+                  ).map((cat) => {
+                    const active = mascotCategory === cat.id
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setMascotCategory(cat.id)}
+                        className={`shrink-0 rounded-lg px-2 py-1 text-[10.5px] font-semibold transition-all ${
+                          active
+                            ? 'bg-[var(--accent)] text-white shadow-sm'
+                            : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Mascot Grid */}
+                <div className="grid max-h-[360px] grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  {ALL_MASCOTS.filter(
+                    (m) => mascotCategory === 'all' || m.category === mascotCategory,
+                  ).map((m) => {
                     const isSelected = mascotChoice === m.id
                     return (
                       <button
@@ -897,23 +1140,26 @@ export function SettingsPage() {
                             : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--surface-elevated)]'
                         }`}
                       >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)]">
-                          {m.type === 'sprite' ? (
-                            <img
-                              src="/mascots/cap-directions.webp"
-                              alt={m.name}
-                              className="h-7 w-7 object-contain"
-                            />
-                          ) : m.type === 'image' ? (
-                            <img
-                              src={m.avatar}
-                              alt={m.name}
-                              className="h-7 w-7 object-contain"
-                            />
-                          ) : (
-                            <span className="text-lg">{m.icon}</span>
-                          )}
-                        </div>
+                        {/* Single Crisp Mascot Face */}
+                        <div
+                          className="h-10 w-10 shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-sm"
+                          style={
+                            m.type === 'sprite'
+                              ? {
+                                  backgroundImage: `url(/mascots/${m.id}-directions.webp)`,
+                                  backgroundSize: '300% 300%',
+                                  backgroundPosition: '50% 50%',
+                                  backgroundRepeat: 'no-repeat',
+                                  imageRendering: '-webkit-optimize-contrast',
+                                }
+                              : {
+                                  backgroundImage: `url(/mochiboard/stamps/mochi-happy.png)`,
+                                  backgroundSize: 'contain',
+                                  backgroundPosition: 'center',
+                                  backgroundRepeat: 'no-repeat',
+                                }
+                          }
+                        />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-1">
                             <span

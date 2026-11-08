@@ -1152,6 +1152,11 @@ function isPureCodeOrTags(text: string): boolean {
   // Pure closing braces, brackets or CSS statements
   if (/^(?:[\s\}\);,]|(?:\/\*[\s\S]*?\*\/))+$/.test(trimmed)) return true
 
+  // Raw CSS media block or style block fragments: e.g. / Dark Mode / \n @media ...
+  if (/^[\s\S]*@media[^{]+\{[\s\S]*\}[\s\S]*$/m.test(trimmed) && /[{}:]/.test(trimmed)) {
+    return true
+  }
+
   return false
 }
 
@@ -1167,7 +1172,7 @@ function detectUnfencedCode(paragraph: string): { isCode: boolean; language: str
   // 1. CSS / SCSS detection
   const hasMediaOrKeyframes = /@(?:media|keyframes|import|supports|font-face)\b/i.test(trimmed)
   const hasCssSelectorsWithBraces = /(?:^|\n)\s*(?:[.#a-zA-Z0-9:_-]+|\*|::-webkit-[a-z-]+|::-moz-[a-z-]+|@media[^{]+)\s*\{/m.test(trimmed)
-  const hasCssProperties = /(?:color|background|font-family|margin|padding|display|position|border|width|height|opacity|z-index|transform|transition|filter|text-align|box-shadow|overflow|border-radius)\s*:\s*[^;]+;/i.test(trimmed)
+  const hasCssProperties = /(?:[a-zA-Z_-]+|--[a-zA-Z0-9_-]+)\s*:\s*[^;{}]+[;}]/i.test(trimmed)
   const hasCssComment = /\/\*[\s\S]*?\*\//.test(trimmed)
 
   if (
@@ -1278,28 +1283,31 @@ export function MarkdownContent({ content, onOpenArtifact }: MarkdownContentProp
   }
 
   // Post-process intermediate blocks:
-  // If a text block consists ONLY of un-fenced code tags (e.g. </style>, </div>, </form>, </br></br>)
+  // If a text block consists of un-fenced code tags (e.g. </style>, </div>, </form>, </br></br>) or raw CSS/HTML snippets
   // and is adjacent to a code block, merge it directly into that code block so it never spills out as raw text!
   const consolidatedBlocks: IntermediateBlock[] = []
   for (let i = 0; i < rawBlocks.length; i++) {
     const cur = rawBlocks[i]
-    if (cur.kind === 'text' && isPureCodeOrTags(cur.text)) {
-      const prev = consolidatedBlocks[consolidatedBlocks.length - 1]
-      const next = i + 1 < rawBlocks.length ? rawBlocks[i + 1] : null
-      if (prev && prev.kind === 'code') {
-        prev.code = (prev.code + '\n' + cur.text.trim()).trim()
-        continue
-      } else if (next && next.kind === 'code') {
-        next.code = (cur.text.trim() + '\n' + next.code).trim()
-        continue
-      } else {
-        consolidatedBlocks.push({
-          kind: 'code',
-          language: 'html',
-          code: cur.text.trim(),
-          index: cur.index,
-        })
-        continue
+    if (cur.kind === 'text') {
+      const codeCheck = detectUnfencedCode(cur.text)
+      if (isPureCodeOrTags(cur.text) || codeCheck.isCode) {
+        const prev = consolidatedBlocks[consolidatedBlocks.length - 1]
+        const next = i + 1 < rawBlocks.length ? rawBlocks[i + 1] : null
+        if (prev && prev.kind === 'code') {
+          prev.code = (prev.code + '\n' + cur.text.trim()).trim()
+          continue
+        } else if (next && next.kind === 'code') {
+          next.code = (cur.text.trim() + '\n' + next.code).trim()
+          continue
+        } else {
+          consolidatedBlocks.push({
+            kind: 'code',
+            language: codeCheck.language || 'html',
+            code: cur.text.trim(),
+            index: cur.index,
+          })
+          continue
+        }
       }
     }
     consolidatedBlocks.push(cur)
