@@ -48,10 +48,18 @@ jobs:
           touch src-tauri/resources/onnxruntime/placeholder.txt
           touch src-tauri/resources/laya/placeholder.txt
 
-      - name: Install NSIS Compiler (Windows)
+      - name: Setup NSIS and Cache (Windows)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
+          $dir = "$env:LOCALAPPDATA\tauri\NSIS"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $dest = "$dir\nsis-3.11.zip"
+          Write-Host "Pre-downloading verified NSIS 3.11 from SourceForge to bypass GitHub CDN 504..."
+          curl.exe -fL --retry 5 --retry-delay 3 -o $dest "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip"
+          if (Test-Path $dest) {
+            Write-Host "NSIS 3.11 pre-cached successfully ($((Get-Item $dest).Length) bytes)"
+          }
           choco install nsis -y
           $nsisPath = "C:\Program Files (x86)\NSIS"
           if (Test-Path $nsisPath) {
