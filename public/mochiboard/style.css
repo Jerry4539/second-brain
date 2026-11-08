@@ -4710,17 +4710,14 @@ body.dark .tile.project .mf {
   margin: 0 !important;
   flex: 1 1 0% !important;
   min-height: 0 !important;
-  height: 0 !important;
-  max-height: 100% !important;
-  overflow-y: scroll !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: auto !important;
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
-  padding: 16px 14px 16px 14px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: flex-start !important;
-  align-items: stretch !important;
+  padding: 16px 14px !important;
+  display: block !important;
   user-select: text;
   -webkit-user-select: text;
   position: relative;
@@ -4752,53 +4749,55 @@ body.dark .tile.project .mf {
 }
 
 .mc-row {
-  display: flex !important;
+  display: block !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  margin: 0 0 12px 0 !important;
+  margin: 0 0 16px 0 !important;
   padding: 0 !important;
-  flex: 0 0 auto !important;
-  flex-shrink: 0 !important;
+  clear: both !important;
   position: relative !important;
+  height: auto !important;
+}
+
+.mc-row:last-child {
+  margin-bottom: 0 !important;
 }
 
 .mc-row.me {
-  justify-content: flex-end !important;
-  padding-left: 36px !important;
+  text-align: right !important;
+  padding-left: 28px !important;
   padding-right: 0 !important;
 }
 
 .mc-row.mochi {
-  justify-content: flex-start !important;
+  text-align: left !important;
   padding-left: 0 !important;
-  padding-right: 28px !important;
+  padding-right: 24px !important;
 }
 
 .mc-msg {
   position: relative !important;
-  display: flex !important;
-  flex-direction: column !important;
+  display: inline-block !important;
   box-sizing: border-box !important;
   clear: both !important;
   float: none !important;
   width: fit-content !important;
   max-width: 88% !important;
   margin: 0 !important;
-  padding: 10px 14px !important;
-  border-radius: 18px !important;
+  padding: 11px 15px !important;
+  border-radius: 20px !important;
   font: 400 13.5px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif !important;
-  animation: mc-in .15s ease-out !important;
   word-break: break-word !important;
-  flex: 0 0 auto !important;
-  flex-shrink: 0 !important;
+  text-align: left !important;
+  vertical-align: top !important;
 }
 
 .mc-row.me .mc-msg,
 .mc-msg.me {
   background: linear-gradient(135deg, #5c2f48, #442236) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(255, 158, 196, .32) !important;
-  border-radius: 18px 18px 4px 18px !important;
+  border: 1px solid rgba(255, 158, 196, .35) !important;
+  border-radius: 20px 20px 4px 20px !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, .28) !important;
   text-align: left !important;
 }
@@ -4807,21 +4806,21 @@ body.dark .tile.project .mf {
 .mc-msg.mochi {
   background: #251f2e !important;
   color: #f7f3f9 !important;
-  border: 1px solid rgba(255, 255, 255, .09) !important;
-  border-radius: 18px 18px 18px 4px !important;
+  border: 1px solid rgba(255, 255, 255, .1) !important;
+  border-radius: 20px 20px 20px 4px !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, .32) !important;
   text-align: left !important;
 }
 
 .mc-msg-author {
-  font: 700 11px/1.2 -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #ff9ec4;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  letter-spacing: .02em;
-  user-select: none;
+  font: 700 11px/1.2 -apple-system, BlinkMacSystemFont, sans-serif !important;
+  color: #ff9ec4 !important;
+  margin-bottom: 5px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  letter-spacing: .02em !important;
+  user-select: none !important;
 }
 
 .mc-msg-author::before {
@@ -4830,59 +4829,60 @@ body.dark .tile.project .mf {
 }
 
 .mc-msg-text {
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.45;
-  color: inherit;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  line-height: 1.45 !important;
+  color: inherit !important;
+  display: block !important;
 }
 
 .mc-msg-meta {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 5px;
-  font: 500 10.5px/1 -apple-system, BlinkMacSystemFont, sans-serif;
-  user-select: none;
+  display: block !important;
+  margin-top: 6px !important;
+  font: 500 10.5px/1 -apple-system, BlinkMacSystemFont, sans-serif !important;
+  user-select: none !important;
 }
 
 .mc-row.me .mc-msg-meta {
-  justify-content: flex-end;
-  color: rgba(255, 220, 235, .6);
+  text-align: right !important;
+  color: rgba(255, 220, 235, .65) !important;
 }
 
 .mc-row.mochi .mc-msg-meta {
-  justify-content: flex-start;
-  color: rgba(230, 220, 240, .55);
+  text-align: left !important;
+  color: rgba(230, 220, 240, .55) !important;
 }
 
 .mc-msg-time {
-  font-size: 10px;
+  font-size: 10px !important;
+  display: inline-block !important;
 }
 
 .mc-msg .m-acts {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  margin-top: 10px;
-  width: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 7px !important;
+  margin-top: 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .mc-msg .m-acts button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 13px;
-  border-radius: 999px;
-  font: 600 12px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-  text-align: left;
-  border: 1px solid rgba(255, 158, 196, .28);
-  background: rgba(255, 158, 196, .09);
-  color: #ffb8d7;
-  cursor: pointer;
-  transition: all .16s ease;
-  box-sizing: border-box;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 8px 13px !important;
+  border-radius: 999px !important;
+  font: 600 12px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+  text-align: left !important;
+  border: 1px solid rgba(255, 158, 196, .28) !important;
+  background: rgba(255, 158, 196, .09) !important;
+  color: #ffb8d7 !important;
+  cursor: pointer !important;
+  transition: all .16s ease !important;
+  box-sizing: border-box !important;
 }
 
 .mc-msg .m-acts button::before {
@@ -4893,17 +4893,20 @@ body.dark .tile.project .mf {
 }
 
 .mc-msg .m-acts button:hover {
-  background: rgba(255, 158, 196, .22);
-  border-color: #ff9ec4;
-  color: #fff;
-  transform: translateY(-1px);
+  background: rgba(255, 158, 196, .22) !important;
+  border-color: #ff9ec4 !important;
+  color: #fff !important;
+  transform: translateY(-1px) !important;
+}
+
+.mc-row.typing-row {
+  display: block !important;
+  text-align: left !important;
+  margin: 0 0 16px 0 !important;
 }
 
 .mc-msg.typing {
-  align-self: flex-start !important;
-  margin-left: 0 !important;
-  margin-right: auto !important;
-  display: flex !important;
+  display: inline-flex !important;
   flex-direction: row !important;
   align-items: center !important;
   gap: 6px !important;
@@ -4912,6 +4915,8 @@ body.dark .tile.project .mf {
   border: 1px solid rgba(255, 255, 255, .08) !important;
   border-radius: 18px 18px 18px 4px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, .2) !important;
+  text-align: left !important;
+  vertical-align: top !important;
 }
 
 .mc-msg.typing i {
