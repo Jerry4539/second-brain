@@ -2503,6 +2503,7 @@
   $('mcInput').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('mcForm').requestSubmit(); } if (e.key === 'Escape') { mochiOpen(false); e.stopPropagation(); } };
   $('mcInput').oninput = () => { const t = $('mcInput'); t.style.height = 'auto'; t.style.height = Math.min(120, t.scrollHeight) + 'px'; };
   $('mChat').addEventListener('pointerdown', e => e.stopPropagation());
+  $('mChat').addEventListener('wheel', e => e.stopPropagation(), { passive: true });
   // what Mochi sees: the cards (trimmed), where they are, what's selected, and what's in Unsorted
   function snapshot() {
     const brief = c => ({ id: c.id, type: c.type, x: Math.round(c.x), y: Math.round(c.y), w: Math.round(c.w), h: Math.round(c.h), color: c.color, fill: c.fill, onFrame: c.onFrame,

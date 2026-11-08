@@ -4708,48 +4708,58 @@ body.dark .tile.project .mf {
 
 .mc-list {
   margin: 0 !important;
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: none;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px 14px !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  max-height: 100% !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+  padding: 16px 14px 16px 14px !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
   align-items: stretch !important;
-  gap: 12px !important;
   user-select: text;
   -webkit-user-select: text;
   position: relative;
   z-index: 2;
   scroll-behavior: smooth;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 158, 196, .25) transparent;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 158, 196, .45) transparent !important;
   box-sizing: border-box !important;
   width: 100% !important;
 }
 
 .mc-list::-webkit-scrollbar {
-  width: 5px;
+  width: 6px !important;
+  display: block !important;
 }
 
 .mc-list::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, .15) !important;
+  border-radius: 999px !important;
 }
 
 .mc-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 158, 196, .25);
-  border-radius: 999px;
+  background: rgba(255, 158, 196, .45) !important;
+  border-radius: 999px !important;
+}
+
+.mc-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 158, 196, .8) !important;
 }
 
 .mc-row {
   display: flex !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  margin: 0 !important;
+  margin: 0 0 12px 0 !important;
   padding: 0 !important;
-  flex: none !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
 }
 
 .mc-row.me {
@@ -4765,21 +4775,22 @@ body.dark .tile.project .mf {
 }
 
 .mc-msg {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  clear: both;
-  float: none;
-  width: fit-content;
-  max-width: 100%;
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 18px;
-  font: 400 13.5px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-  animation: mc-in .22s cubic-bezier(.16, 1, .3, 1);
-  word-break: break-word;
-  flex: none;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  clear: both !important;
+  float: none !important;
+  width: fit-content !important;
+  max-width: 88% !important;
+  margin: 0 !important;
+  padding: 10px 14px !important;
+  border-radius: 18px !important;
+  font: 400 13.5px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif !important;
+  animation: mc-in .15s ease-out !important;
+  word-break: break-word !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
 }
 
 .mc-row.me .mc-msg,
@@ -4967,7 +4978,9 @@ body.dark .tile.project .mf {
 @keyframes mc-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
   }
 }
 
