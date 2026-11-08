@@ -826,7 +826,9 @@ body.dark .card .chip {
 }
 
 /* ---------- Mochi ---------- */
-#mochi.mochi, body > .mochi, #mochi {
+#mochi.mochi,
+body>.mochi,
+#mochi {
   position: absolute;
   left: calc(50% + 8px);
   bottom: 22px;
@@ -5163,7 +5165,9 @@ body.dark .tile.project .mf {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
   padding: 16px 14px 20px 14px !important;
-  display: block !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
   user-select: text;
   -webkit-user-select: text;
   position: relative;
@@ -5195,11 +5199,11 @@ body.dark .tile.project .mf {
 }
 
 .mc-row {
-  display: block !important;
+  display: flex !important;
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
-  margin: 0 0 14px 0 !important;
+  margin: 0 !important;
   padding: 0 !important;
   clear: both !important;
   position: relative !important;
@@ -5210,12 +5214,7 @@ body.dark .tile.project .mf {
   transform: none !important;
   height: auto !important;
   min-height: min-content !important;
-}
-
-.mc-row::after {
-  content: "" !important;
-  display: table !important;
-  clear: both !important;
+  flex-shrink: 0 !important;
 }
 
 .mc-row:last-child {
@@ -5223,12 +5222,14 @@ body.dark .tile.project .mf {
 }
 
 .mc-row.me {
+  justify-content: flex-end !important;
   text-align: right !important;
   padding: 0 !important;
 }
 
 .mc-row.mochi,
 .mc-row.mc-mochi {
+  justify-content: flex-start !important;
   text-align: left !important;
   padding: 0 !important;
 }
@@ -5240,7 +5241,8 @@ body.dark .tile.project .mf {
   top: auto !important;
   bottom: auto !important;
   transform: none !important;
-  display: block !important;
+  display: flex !important;
+  flex-direction: column !important;
   box-sizing: border-box !important;
   width: fit-content !important;
   margin: 0 !important;
@@ -5249,23 +5251,26 @@ body.dark .tile.project .mf {
   height: auto !important;
   min-height: min-content !important;
   text-align: left !important;
+  float: none !important;
+  clear: none !important;
 }
 
 /* User Message Bubble */
 .mc-row.me .mc-msg,
 .mc-msg.me {
-  float: right !important;
-  clear: both !important;
+  float: none !important;
+  clear: none !important;
   max-width: 84% !important;
   margin-left: auto !important;
   margin-right: 0 !important;
-  padding: 11px 15px !important;
+  padding: 11px 16px !important;
   background: linear-gradient(135deg, #6c2a52, #471936) !important;
   color: #ffffff !important;
   border: 1px solid rgba(255, 158, 196, .35) !important;
   border-radius: 20px 20px 4px 20px !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, .28) !important;
   text-align: left !important;
+  align-self: flex-end !important;
 }
 
 /* AI Message Card */
@@ -5273,8 +5278,8 @@ body.dark .tile.project .mf {
 .mc-row.mc-mochi .mc-msg,
 .mc-msg.mochi,
 .mc-msg.mc-mochi {
-  float: left !important;
-  clear: both !important;
+  float: none !important;
+  clear: none !important;
   max-width: 88% !important;
   margin-left: 0 !important;
   margin-right: auto !important;
@@ -5283,6 +5288,10 @@ body.dark .tile.project .mf {
   color: #f7f3f9 !important;
   border: 1px solid rgba(255, 255, 255, .09) !important;
   border-radius: 20px 20px 20px 4px !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .32) !important;
+  text-align: left !important;
+  align-self: flex-start !important;
+
   box-shadow: 0 6px 20px rgba(0, 0, 0, .32) !important;
   text-align: left !important;
 }
@@ -5551,13 +5560,25 @@ body.dark .tile.project .mf {
 }
 
 @keyframes mc-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes mc-scale-in {
-  from { opacity: 0; transform: scale(.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes mc-dot {
@@ -5624,8 +5645,14 @@ body.dark .tile.project .mf {
   -webkit-user-select: text !important;
   box-sizing: border-box !important;
   scrollbar-width: none !important;
-  overflow-y: hidden !important;
+  overflow: hidden !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
   transition: border-color .18s ease, background .18s ease, box-shadow .18s ease !important;
+}
+
+.mc-form textarea::-webkit-resizer {
+  display: none !important;
 }
 
 .mc-form textarea::-webkit-scrollbar {
@@ -18800,6 +18827,7 @@ body.dark #settings .sfb-refresh-btn {
 }
 
 @media (max-width: 600px) {
+
   #settings .set-card-ai .conns,
   #settings #conns,
   #settings .theme-grid {
@@ -18828,7 +18856,7 @@ body.dark #settings .sfb-refresh-btn {
   box-sizing: border-box;
 }
 
-#settings .set-row > div:first-child {
+#settings .set-row>div:first-child {
   min-width: 0;
   flex: 1 1 auto;
 }

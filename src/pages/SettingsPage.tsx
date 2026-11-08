@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Mascot } from '../lib/page-mascot'
 import {
   Brain,
@@ -24,6 +25,7 @@ import {
   Sparkles,
   Trash2,
   Trophy,
+  User,
   Zap,
 } from 'lucide-react'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -139,7 +141,7 @@ function ToggleSwitch({
 }
 
 type DbStatus = 'checking' | 'connected' | 'error'
-type SettingsCategory = 'all' | 'ai_image' | 'canvas' | 'knowledge' | 'system'
+type SettingsCategory = 'all' | 'profile' | 'canvas' | 'ai_image' | 'knowledge' | 'system'
 
 const STEP_PRESETS = [4, 5, 6, 7, 8, 10, 12, 16, 20] as const
 const RESOLUTION_PRESETS = [
@@ -371,7 +373,24 @@ export const ALL_MASCOTS: MascotDefinition[] = [
 ] as const
 
 export function SettingsPage() {
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('all')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') as SettingsCategory | null
+  const [activeCategory, setActiveCategoryState] = useState<SettingsCategory>(() => {
+    if (initialTab && ['all', 'profile', 'canvas', 'ai_image', 'knowledge', 'system'].includes(initialTab)) {
+      return initialTab
+    }
+    return 'all'
+  })
+
+  const setActiveCategory = (tab: SettingsCategory) => {
+    setActiveCategoryState(tab)
+    if (tab === 'all') {
+      searchParams.delete('tab')
+      setSearchParams(searchParams, { replace: true })
+    } else {
+      setSearchParams({ tab }, { replace: true })
+    }
+  }
   const [aboutOpen, setAboutOpen] = useState(false)
   const [userName, setUserName] = useState('Jerry')
   const [botName, setBotName] = useState('Second Brain')
@@ -680,8 +699,9 @@ export function SettingsPage() {
         {(
           [
             { id: 'all', label: 'All Bento Cards', icon: LayoutGrid },
+            { id: 'profile', label: 'Profile & Mascot Studio', icon: User },
+            { id: 'canvas', label: 'Canvas Settings', icon: Palette },
             { id: 'ai_image', label: 'Image Rendering & Models', icon: ImageIcon },
-            { id: 'canvas', label: 'Canvas & Mascot', icon: Palette },
             { id: 'knowledge', label: 'Knowledge & Web APIs', icon: Globe },
             { id: 'system', label: 'Memory, RLHF & Hardware', icon: Cpu },
           ] as const
@@ -1023,100 +1043,161 @@ export function SettingsPage() {
         )}
 
         {/* ----------------------------------------------------------------- */}
-        {/* BENTO 3: CANVAS & MASCOT CO-PILOT PREFERENCES (5 cols)            */}
+        {/* BENTO 0: CREATOR PROFILE & MASCOT STUDIO (12 cols)                */}
         {/* ----------------------------------------------------------------- */}
-        {showSection('canvas') && (
+        {showSection('profile') && (
           <BentoCard
-            className={activeCategory === 'canvas' ? 'col-span-12' : 'col-span-12 lg:col-span-5'}
-            title="Infinite Canvas & Mascot Co-Pilot"
-            subtitle="Customize the bottom-right Second Brain mascot, infinite board physics, and cursor feel."
-            icon={Layers}
-            badge={<Badge tone="accent">Bottom-Right Pinned</Badge>}
+            className="col-span-12"
+            accentGlow
+            title="Creator Profile & Mascot Studio"
+            subtitle="Choose your interactive mascot co-pilot, customize creator persona, and preview 8-way eye tracking."
+            icon={User}
+            badge={<Badge tone="accent">24 Interactive Mascots</Badge>}
           >
-            <div className="space-y-3">
-              {/* Mascot Character Avatar Selection */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/45 p-3">
-                <div className="mb-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-[var(--text)]">
-                      Choose Mascot Co-Pilot
-                    </span>
-                    <Badge tone="accent">24 Mascots</Badge>
-                  </div>
-                  <span className="text-[10px] text-[var(--muted)]">Canvas & Sidebar</span>
-                </div>
-
-                {/* Live Interactive Mascot Stage */}
+            <div className="space-y-4">
+              {/* Row 1: Active Mascot Card + Creator Identity Card */}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {/* Cute Active Mascot Banner (No Description) */}
                 {(() => {
                   const activeDef = ALL_MASCOTS.find((m) => m.id === mascotChoice) || ALL_MASCOTS[0]
                   return (
-                    <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 p-3 shadow-inner">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-sm">
+                    <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/60 p-3.5 shadow-sm">
+                      <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-inner">
                         {activeDef.id === 'mochi' ? (
                           <img
                             src="/mochiboard/stamps/mochi-happy.png"
                             alt="Mochi Mascot"
-                            className="h-12 w-12 object-contain cursor-pointer transition-transform hover:scale-110"
+                            className="h-14 w-14 object-contain cursor-pointer transition-transform hover:scale-110"
                           />
                         ) : (
                           <Mascot
                             directions={`/mascots/${activeDef.id}-directions.webp`}
                             reactions={`/mascots/${activeDef.id}-reactions.webp`}
-                            size={56}
+                            size={64}
                           />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-[var(--text)]">
+                          <span className="text-base font-bold text-[var(--text)]">
                             {activeDef.name}
                           </span>
-                          <span className="rounded bg-[var(--accent)]/15 px-1.5 py-0.5 text-[9px] font-bold text-[var(--accent)]">
+                          <span className="rounded-md bg-[var(--accent)]/15 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]">
                             {activeDef.badge}
                           </span>
                         </div>
-                        <p className="mt-0.5 text-xs text-[var(--muted)] line-clamp-1">
-                          {activeDef.desc}
-                        </p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Active Co-Pilot
+                          </span>
+                          <span className="text-[11px] text-[var(--muted)]">8-way eye tracking</span>
+                        </div>
                         <p className="mt-1 text-[10px] text-[var(--accent)] font-medium">
-                          ✦ Live 8-way eye tracking active. Click mascot for reactions!
+                          ✦ Click mascot to trigger joyful expressions!
                         </p>
                       </div>
                     </div>
                   )
                 })()}
 
-                {/* Category Filter Pills */}
-                <div className="mb-2.5 flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
-                  {(
-                    [
-                      { id: 'all', label: 'All (24)' },
-                      { id: 'animals', label: 'Animals (10)' },
-                      { id: 'characters', label: 'Characters (7)' },
-                      { id: 'robots', label: 'Robots & Tech (6)' },
-                      { id: 'classic', label: 'Original' },
-                    ] as const
-                  ).map((cat) => {
-                    const active = mascotCategory === cat.id
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setMascotCategory(cat.id)}
-                        className={`shrink-0 rounded-lg px-2 py-1 text-[10.5px] font-semibold transition-all ${
-                          active
-                            ? 'bg-[var(--accent)] text-white shadow-sm'
-                            : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    )
-                  })}
+                {/* Creator Identity & Level Progress */}
+                <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/60 p-3.5 shadow-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-[var(--text)]">Creator Persona</span>
+                      <span className="rounded bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
+                        {getAgentRankTitle(policy.level)}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-[var(--accent)]">
+                      Level {policy.level}
+                    </span>
+                  </div>
+
+                  <div className="my-2 grid grid-cols-2 gap-2">
+                    <label className="flex flex-col gap-1 text-[11px] text-[var(--text)]">
+                      <span className="font-medium text-[var(--muted)]">Your Name</span>
+                      <Input
+                        value={userName}
+                        placeholder="Your name"
+                        onChange={(event) => setUserName(event.target.value)}
+                        onBlur={(event) => saveUserName(event.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-[11px] text-[var(--text)]">
+                      <span className="font-medium text-[var(--muted)]">Assistant Label</span>
+                      <Input
+                        value={botName}
+                        placeholder="Second Brain"
+                        onChange={(event) => setBotName(event.target.value)}
+                        onBlur={(event) => saveBotName(event.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </label>
+                  </div>
+
+                  {/* XP Bar */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-[var(--muted)]">
+                      <span>Experience Points</span>
+                      <span className="font-semibold text-[var(--text)]">{policy.totalXp} XP</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface)]">
+                      <div
+                        className="h-full rounded-full bg-linear-to-r from-[var(--accent)] to-pink-500 transition-all duration-500"
+                        style={{ width: `${levelProgressPct}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Mascot Catalog Header + Category Filter Pills */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/40 p-3.5">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-bold text-[var(--text)]">
+                      Choose Your Mascot Companion
+                    </span>
+                    <p className="text-[11px] text-[var(--muted)]">
+                      Pick any character below. Syncs live with Canvas Dock and Sidebar.
+                    </p>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                    {(
+                      [
+                        { id: 'all', label: 'All (24)' },
+                        { id: 'animals', label: 'Animals (10)' },
+                        { id: 'characters', label: 'Characters (7)' },
+                        { id: 'robots', label: 'Robots & Tech (6)' },
+                        { id: 'classic', label: 'Original' },
+                      ] as const
+                    ).map((cat) => {
+                      const active = mascotCategory === cat.id
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setMascotCategory(cat.id)}
+                          className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                            active
+                              ? 'bg-[var(--accent)] text-white shadow-xs'
+                              : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
-                {/* Mascot Grid */}
-                <div className="grid max-h-[360px] grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {/* Mascot Collection Grid: Big Face, Name Only, No Descriptions */}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
                   {ALL_MASCOTS.filter(
                     (m) => mascotCategory === 'all' || m.category === mascotCategory,
                   ).map((m) => {
@@ -1134,15 +1215,15 @@ export function SettingsPage() {
                           )
                           showToast(`Mascot set to ${m.name}`, 'success')
                         }}
-                        className={`flex items-center gap-2.5 rounded-xl border p-2 text-left transition-all ${
+                        className={`group relative flex flex-col items-center justify-center rounded-2xl border p-2.5 text-center transition-all ${
                           isSelected
-                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 ring-1 ring-[var(--accent)]'
-                            : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--surface-elevated)]'
+                            ? 'border-[var(--accent)] bg-[var(--accent)]/15 ring-2 ring-[var(--accent)] shadow-md'
+                            : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/50 hover:bg-[var(--surface-elevated)] hover:-translate-y-0.5'
                         }`}
                       >
-                        {/* Single Crisp Mascot Face */}
+                        {/* Big Crisp Mascot Face (No 9-grid, Single Head) */}
                         <div
-                          className="h-10 w-10 shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-sm"
+                          className="h-14 w-14 shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] shadow-inner transition-transform group-hover:scale-105"
                           style={
                             m.type === 'sprite'
                               ? {
@@ -1160,29 +1241,46 @@ export function SettingsPage() {
                                 }
                           }
                         />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span
-                              className={`truncate text-xs font-bold ${
-                                isSelected ? 'text-[var(--accent)]' : 'text-[var(--text)]'
-                              }`}
-                            >
-                              {m.name}
-                            </span>
-                            <span className="shrink-0 rounded px-1 text-[8.5px] font-semibold bg-[var(--surface-elevated)] text-[var(--muted)]">
-                              {m.badge}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 truncate text-[10px] text-[var(--muted)]">
-                            {m.desc}
-                          </p>
-                        </div>
+
+                        {/* Name Only (No Description Clutter) */}
+                        <span
+                          className={`mt-2 truncate w-full text-xs font-bold ${
+                            isSelected ? 'text-[var(--accent)]' : 'text-[var(--text)]'
+                          }`}
+                        >
+                          {m.name}
+                        </span>
+
+                        <span className="mt-0.5 truncate rounded px-1.5 py-0.2 text-[8.5px] font-semibold bg-[var(--surface-elevated)] text-[var(--muted)]">
+                          {m.badge}
+                        </span>
+
+                        {isSelected && (
+                          <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent)] text-[9px] text-white shadow-xs">
+                            ✓
+                          </span>
+                        )}
                       </button>
                     )
                   })}
                 </div>
               </div>
+            </div>
+          </BentoCard>
+        )}
 
+        {/* ----------------------------------------------------------------- */}
+        {/* BENTO 3: CANVAS & CO-PILOT PREFERENCES (5 cols)                   */}
+        {/* ----------------------------------------------------------------- */}
+        {showSection('canvas') && (
+          <BentoCard
+            className={activeCategory === 'canvas' ? 'col-span-12' : 'col-span-12 lg:col-span-5'}
+            title="Infinite Canvas Preferences"
+            subtitle="Customize infinite board physics, snap to grid, 3D card tilt, cursor feel, and dock response style."
+            icon={Layers}
+            badge={<Badge tone="accent">Bottom-Right Pinned</Badge>}
+          >
+            <div className="space-y-3">
               {/* Mascot Motion */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/45 p-3">
                 <div className="mb-1.5 flex items-center justify-between">
@@ -1288,7 +1386,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/40 p-2.5">
-                  <span className="text-xs font-medium text-[var(--text)]">Cute Cursor</span>
+                  <span className="text-xs font-medium text-[var(--text)]">Canvas Cursor</span>
                   <ToggleSwitch
                     checked={fancyCursor}
                     onChange={(v) => {
@@ -1298,6 +1396,16 @@ export function SettingsPage() {
                   />
                 </div>
               </div>
+
+              {/* Quick Link to Profile Studio */}
+              <button
+                type="button"
+                onClick={() => setActiveCategory('profile')}
+                className="flex w-full items-center justify-between rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-xs font-semibold text-[var(--accent)] transition-all hover:bg-[var(--accent)]/20"
+              >
+                <span>Switch Mascot Character in Profile Studio</span>
+                <span>→</span>
+              </button>
             </div>
           </BentoCard>
         )}

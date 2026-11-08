@@ -51,12 +51,16 @@ export function Sidebar() {
         }`}
       >
         <div className="flex items-center gap-2 overflow-hidden">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+          <NavLink
+            to="/settings?tab=profile"
+            title="Creator Profile & Mascot Studio"
+            className="flex h-9 w-9 shrink-0 items-center justify-center transition-transform hover:scale-105"
+          >
             {mascotChoice === 'mochi' ? (
               <img
                 src="/mochiboard/stamps/mochi-happy.png"
                 alt="Mochi Mascot"
-                className="h-8 w-8 object-contain transition-transform hover:scale-110 cursor-pointer"
+                className="h-8 w-8 object-contain cursor-pointer"
               />
             ) : (
               <Mascot
@@ -65,7 +69,7 @@ export function Sidebar() {
                 size={36}
               />
             )}
-          </div>
+          </NavLink>
           {!collapsed && (
             <span className="truncate text-sm font-semibold text-[var(--text)]">
               Second Brain
