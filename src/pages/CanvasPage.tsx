@@ -149,7 +149,7 @@ export function CanvasPage() {
           jobBridge?.finish(jobId, fallbackUrl, prompt)
         }
         showToast(`Image generation failed: ${String(err)}`, 'warning')
-        return fallbackUrl
+        return null
       }
     },
     [showToast],

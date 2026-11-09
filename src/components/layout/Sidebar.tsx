@@ -4,14 +4,15 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Mascot } from 'page-mascot'
 import { navItems } from '../../lib/navigation'
 import { useNetworkStatus } from '../../lib/networkStatus'
+import { safeStorage } from '../../lib/safeStorage'
 
 export function Sidebar() {
   const { effectiveOnline, forceOffline, toggleForceOffline } = useNetworkStatus()
   const [collapsed, setCollapsed] = useState(() => {
-    return localStorage.getItem('sidebar_collapsed') === 'true'
+    return safeStorage.getItem('sidebar_collapsed') === 'true'
   })
   const [mascotChoice, setMascotChoice] = useState<string>(() => {
-    return localStorage.getItem('second-brain-mascot-choice') || 'cap'
+    return safeStorage.getItem('second-brain-mascot-choice') || 'cap'
   })
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export function Sidebar() {
     }
     window.addEventListener('second-brain-mascot-change', handler)
     const storageHandler = () => {
-      setMascotChoice(localStorage.getItem('second-brain-mascot-choice') || 'cap')
+      setMascotChoice(safeStorage.getItem('second-brain-mascot-choice') || 'cap')
     }
     window.addEventListener('storage', storageHandler)
     return () => {
@@ -33,7 +34,7 @@ export function Sidebar() {
   function toggleCollapsed() {
     setCollapsed((prev) => {
       const next = !prev
-      localStorage.setItem('sidebar_collapsed', String(next))
+      safeStorage.setItem('sidebar_collapsed', String(next))
       return next
     })
   }

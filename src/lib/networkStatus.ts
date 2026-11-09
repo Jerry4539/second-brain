@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { safeStorage } from './safeStorage'
 
 export interface NetworkState {
   online: boolean
@@ -7,9 +8,7 @@ export interface NetworkState {
 }
 
 let currentOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
-let currentForceOffline = typeof localStorage !== 'undefined'
-  ? localStorage.getItem('force_offline') === 'true'
-  : false
+let currentForceOffline = safeStorage.getItem('force_offline') === 'true'
 
 const listeners = new Set<(state: NetworkState) => void>()
 
@@ -32,9 +31,7 @@ export function isNetworkAvailable(): boolean {
 
 export function setForceOffline(force: boolean): void {
   currentForceOffline = force
-  try {
-    localStorage.setItem('force_offline', String(force))
-  } catch {}
+  safeStorage.setItem('force_offline', String(force))
   notify()
 }
 

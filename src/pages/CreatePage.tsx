@@ -40,10 +40,16 @@ import {
 } from '../lib/db'
 
 const SIZE_PRESETS = [
-  { label: 'Square (512×512) — Standard Detail', width: 512, height: 512 },
-  { label: 'Compact (384×384) — Fast Preview', width: 384, height: 384 },
+  { label: 'Small Square (256×256) — Quick Preview', width: 256, height: 256 },
+  { label: 'Compact Square (384×384) — Fast Preview', width: 384, height: 384 },
+  { label: 'Standard Square (512×512) — Balanced', width: 512, height: 512 },
+  { label: 'HD Square (768×768) — High Quality', width: 768, height: 768 },
   { label: 'Portrait (512×768) — Tall', width: 512, height: 768 },
+  { label: 'HD Portrait (768×1024) — High Detail', width: 768, height: 1024 },
   { label: 'Landscape (768×512) — Wide', width: 768, height: 512 },
+  { label: 'HD Landscape (1024×768) — High Detail', width: 1024, height: 768 },
+  { label: 'Widescreen (1024×576) — 16:9', width: 1024, height: 576 },
+  { label: 'Portrait Story (576×1024) — 9:16', width: 576, height: 1024 },
 ]
 
 interface Viewing {
@@ -111,12 +117,12 @@ export function CreatePage() {
   const selectedModel = models?.find((m) => m.id === modelId) ?? null
   const isLcm = Boolean(
     selectedModel?.architecture === 'LCM' ||
-      selectedModel?.name?.toLowerCase().includes('lcm') ||
-      selectedModel?.path?.toLowerCase().includes('lcm'),
+    selectedModel?.name?.toLowerCase().includes('lcm') ||
+    selectedModel?.path?.toLowerCase().includes('lcm'),
   )
   const isTurbo = Boolean(
     selectedModel?.name?.toLowerCase().includes('turbo') ||
-      selectedModel?.path?.toLowerCase().includes('turbo'),
+    selectedModel?.path?.toLowerCase().includes('turbo'),
   )
   const isFastModel = isLcm || isTurbo
 
@@ -162,12 +168,12 @@ export function CreatePage() {
     const seed = seedInput.trim() ? Number(seedInput.trim()) : undefined
     const modelIsLcm = Boolean(
       model.architecture === 'LCM' ||
-        model.name.toLowerCase().includes('lcm') ||
-        model.path.toLowerCase().includes('lcm'),
+      model.name.toLowerCase().includes('lcm') ||
+      model.path.toLowerCase().includes('lcm'),
     )
     const modelIsTurbo = Boolean(
       model.name.toLowerCase().includes('turbo') ||
-        model.path.toLowerCase().includes('turbo'),
+      model.path.toLowerCase().includes('turbo'),
     )
 
     const parsedCfg = cfgScaleInput.trim() ? parseFloat(cfgScaleInput.trim()) : NaN
@@ -211,7 +217,7 @@ export function CreatePage() {
       const [saved] = await listImages(1)
       if (saved) setViewing({ image: saved, dataUrl })
       await refreshHistory()
-      imageEngineStatus().then(setEngineStatus).catch(() => {})
+      imageEngineStatus().then(setEngineStatus).catch(() => { })
       showToast('Image generated', 'success')
     } catch (error) {
       const message = String(error)
@@ -222,7 +228,7 @@ export function CreatePage() {
     } finally {
       setGenerating(false)
       cancelRef.current = null
-      imageEngineStatus().then(setEngineStatus).catch(() => {})
+      imageEngineStatus().then(setEngineStatus).catch(() => { })
     }
   }
 
@@ -313,8 +319,8 @@ export function CreatePage() {
             onChange={(e) => {
               const newId = e.target.value
               setModelId(newId)
-              setSetting('default_image_model_id', newId).catch(() => {})
-              setDefaultModel(newId).catch(() => {})
+              setSetting('default_image_model_id', newId).catch(() => { })
+              setDefaultModel(newId).catch(() => { })
             }}
             disabled={generating}
             className="max-w-[220px]"
@@ -400,11 +406,10 @@ export function CreatePage() {
                       type="button"
                       disabled={generating}
                       onClick={() => setSteps(s)}
-                      className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                        steps === s
-                          ? 'bg-[var(--accent)] text-white'
-                          : 'bg-[var(--surface-muted)] text-[var(--muted)] hover:text-[var(--text)]'
-                      }`}
+                      className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${steps === s
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'bg-[var(--surface-muted)] text-[var(--muted)] hover:text-[var(--text)]'
+                        }`}
                     >
                       {s === 4 ? '4 (fast)' : s === 6 ? '6 (sharp)' : '8 (finest)'}
                     </button>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { safeStorage } from '../lib/safeStorage'
 import { Mascot } from '../lib/page-mascot'
 import {
   Brain,
@@ -411,7 +412,7 @@ export function SettingsPage() {
 
   // Canvas & Mascot Co-Pilot Preferences (synced with mochiboard:settings)
   const [mascotChoice, setMascotChoice] = useState<string>(() => {
-    return localStorage.getItem('second-brain-mascot-choice') || 'cap'
+    return safeStorage.getItem('second-brain-mascot-choice') || 'cap'
   })
   const [mascotCategory, setMascotCategory] = useState<'all' | 'animals' | 'characters' | 'robots' | 'classic'>('all')
   const [mascotCalm, setMascotCalm] = useState<'lively' | 'calm' | 'calmest'>('lively')
@@ -1209,7 +1210,7 @@ export function SettingsPage() {
                         type="button"
                         onClick={() => {
                           setMascotChoice(m.id)
-                          localStorage.setItem('second-brain-mascot-choice', m.id)
+                          safeStorage.setItem('second-brain-mascot-choice', m.id)
                           syncCanvasLocalStorage({ mascotChoice: m.id })
                           window.dispatchEvent(
                             new CustomEvent('second-brain-mascot-change', { detail: m.id }),

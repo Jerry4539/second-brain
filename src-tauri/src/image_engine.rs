@@ -492,7 +492,6 @@ async fn generate_via_server(
         "-t",
         &threads.to_string(),
         "--mmap",
-        "--diffusion-fa",
       ]);
       if model_path.to_lowercase().contains("lcm") {
         cmd.args([
@@ -698,7 +697,6 @@ async fn run_cli_generation(
     "-t",
     &threads.to_string(),
     "--mmap",
-    "--diffusion-fa",
   ]);
   if force_cpu_backend {
     cmd.args(["--backend", "cpu"]);
