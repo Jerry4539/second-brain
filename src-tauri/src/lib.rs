@@ -175,14 +175,6 @@ pub fn run() {
       addons::read_addon_content,
       addons::install_starter_addon
     ])
-    .setup(|app| {
-      app.handle().plugin(
-        tauri_plugin_log::Builder::default()
-          .level(log::LevelFilter::Info)
-          .build(),
-      )?;
-      Ok(())
-    })
     .run(tauri::generate_context!())
     .map_err(|e| {
       let msg = format!("Tauri run error: {e}");
