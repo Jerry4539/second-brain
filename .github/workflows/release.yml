@@ -48,24 +48,31 @@ jobs:
           touch src-tauri/resources/onnxruntime/placeholder.txt
           touch src-tauri/resources/laya/placeholder.txt
 
-      - name: Setup NSIS and Cache (Windows)
+      - name: Pre-populate NSIS and nsis_tauri_utils (Windows)
         if: matrix.platform == 'windows-latest'
         shell: pwsh
         run: |
-          $dir = "$env:LOCALAPPDATA\tauri\NSIS"
-          New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          $dest = "$dir\nsis-3.11.zip"
-          Write-Host "Pre-downloading verified NSIS 3.11 from SourceForge to bypass GitHub CDN 504..."
-          curl.exe -fL --retry 5 --retry-delay 3 -o $dest "https://downloads.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip"
-          if (Test-Path $dest) {
-            Write-Host "NSIS 3.11 pre-cached successfully ($((Get-Item $dest).Length) bytes)"
-          }
-          choco install nsis -y
-          $nsisPath = "C:\Program Files (x86)\NSIS"
-          if (Test-Path $nsisPath) {
-            echo $nsisPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            & "$nsisPath\makensis.exe" /VERSION
-          }
+          $tauriNsis = "$env:LOCALAPPDATA\tauri\NSIS"
+          New-Item -ItemType Directory -Force -Path $tauriNsis | Out-Null
+
+          # Copy vendor nsis-3.11.zip into Tauri's cache
+          Copy-Item -Path ".github\vendor\nsis-3.11.zip" -Destination "$tauriNsis\nsis-3.11.zip" -Force
+
+          # Extract nsis-3.11.zip so nsis-3.11 directory is immediately populated
+          Expand-Archive -Path "$tauriNsis\nsis-3.11.zip" -DestinationPath $tauriNsis -Force
+
+          # Place verified nsis_tauri_utils.dll into required plugin directories
+          $destPlugin1 = "$tauriNsis\nsis-3.11\Plugins\x86-unicode\additional"
+          $destPlugin2 = "$tauriNsis\Plugins\x86-unicode\additional"
+          New-Item -ItemType Directory -Force -Path $destPlugin1 | Out-Null
+          New-Item -ItemType Directory -Force -Path $destPlugin2 | Out-Null
+          Copy-Item -Path ".github\vendor\nsis_tauri_utils.dll" -Destination "$destPlugin1\nsis_tauri_utils.dll" -Force
+          Copy-Item -Path ".github\vendor\nsis_tauri_utils.dll" -Destination "$destPlugin2\nsis_tauri_utils.dll" -Force
+
+          # Verify files and hashes
+          Write-Host "Verifying pre-cached NSIS package:"
+          Get-FileHash "$destPlugin1\nsis_tauri_utils.dll" -Algorithm SHA1
+          Get-FileHash "$tauriNsis\nsis-3.11.zip" -Algorithm SHA1
 
       - name: Build Tauri Desktop Application (.exe / .dmg / .app)
         uses: tauri-apps/tauri-action@v0
