@@ -28,6 +28,7 @@ import {
   insertModel,
   listModels,
   setDefaultModel,
+  setSetting,
   type ModelRecord,
 } from '../lib/db'
 import { CURATED_MODELS, type CuratedModel } from '../lib/curatedModels'
@@ -199,6 +200,9 @@ export function ModelsPage() {
 
   async function handleSetDefault(id: string) {
     await setDefaultModel(id)
+    if (activeTab === 'image') {
+      await setSetting('default_image_model_id', id)
+    }
     await refresh()
     showToast('Default model updated', 'success')
   }

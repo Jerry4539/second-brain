@@ -32,6 +32,8 @@ import {
   insertImage,
   listImages,
   listModels,
+  setDefaultModel,
+  setSetting,
   toggleFavoriteImage,
   type ImageRecord,
   type ModelRecord,
@@ -79,13 +81,17 @@ export function CreatePage() {
   useEffect(() => {
     Promise.all([
       listModels('image'),
+      getSetting('default_image_model_id'),
       getSetting('image_gen_steps'),
       getSetting('image_gen_resolution'),
       getSetting('image_gen_cfg'),
     ])
-      .then(([list, storedSteps, storedRes, storedCfg]) => {
+      .then(([list, savedModelId, storedSteps, storedRes, storedCfg]) => {
         setModels(list)
-        const defaultModel = list.find((m) => m.is_default === 1) ?? list[0]
+        const defaultModel =
+          list.find((m) => m.id === savedModelId) ??
+          list.find((m) => m.is_default === 1) ??
+          list[0]
         if (defaultModel) setModelId(defaultModel.id)
         if (storedSteps && !isNaN(Number(storedSteps))) {
           const parsed = Math.max(2, Math.min(30, Number(storedSteps)))
@@ -304,7 +310,12 @@ export function CreatePage() {
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <Select
             value={modelId}
-            onChange={(e) => setModelId(e.target.value)}
+            onChange={(e) => {
+              const newId = e.target.value
+              setModelId(newId)
+              setSetting('default_image_model_id', newId).catch(() => {})
+              setDefaultModel(newId).catch(() => {})
+            }}
             disabled={generating}
             className="max-w-[220px]"
           >

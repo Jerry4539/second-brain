@@ -342,7 +342,13 @@ export async function deleteModel(id: string): Promise<void> {
 
 export async function setDefaultModel(id: string): Promise<void> {
   const db = await getDb()
-  await db.execute('UPDATE models SET is_default = 0', [])
+  const rows = await db.select<{ kind: string }[]>('SELECT kind FROM models WHERE id = $1', [id])
+  const targetKind = rows[0]?.kind
+  if (targetKind) {
+    await db.execute('UPDATE models SET is_default = 0 WHERE kind = $1', [targetKind])
+  } else {
+    await db.execute('UPDATE models SET is_default = 0', [])
+  }
   await db.execute('UPDATE models SET is_default = 1 WHERE id = $1', [id])
 }
 

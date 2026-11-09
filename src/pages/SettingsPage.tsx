@@ -645,6 +645,7 @@ export function SettingsPage() {
   async function handleDefaultImageModelChange(id: string) {
     if (!id) return
     await setDefaultModel(id)
+    await setSetting('default_image_model_id', id)
     setImageModels(await listModels('image'))
     showToast('Default image model updated', 'success')
   }

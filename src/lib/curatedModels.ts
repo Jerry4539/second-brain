@@ -223,7 +223,7 @@ export const CURATED_MODELS: CuratedModel[] = [
   },
 
   // ===========================================================================
-  // HIGH-CLARITY LOCAL IMAGE GENERATION MODELS (GGUF for Apple Silicon Metal)
+  // HIGH-CLARITY LOCAL IMAGE GENERATION MODELS (GGUF for Apple Silicon Metal & CPU)
   // ===========================================================================
   {
     id: 'lcm-dreamshaper-v7',
@@ -233,7 +233,7 @@ export const CURATED_MODELS: CuratedModel[] = [
     badge: '★ Ultra-Clear FP16 • 2.13 GB',
     badgeTone: 'success',
     sizeLabel: '2.13 GB',
-    sizeMb: 2180,
+    sizeMb: 2132,
     minRamGb: 6,
     ramEstimate: '~2.3 GB RAM',
     metalSpeed: '~6s (8 steps)',
@@ -241,10 +241,10 @@ export const CURATED_MODELS: CuratedModel[] = [
     recommendedFor: ['compact', 'pro'],
     idealFor: 'Maximum lighting, sharp details & studio-grade color fidelity',
     description:
-      'Unquantized 16-bit precision GGUF of DreamShaper v7. Takes a few extra seconds to render crisp, noise-free cinematic artwork.',
-    filename: 'LCM_Dreamshaper_v7_f16.gguf',
+      'Unquantized 16-bit precision GGUF of DreamShaper v7. Direct open download for crisp, noise-free cinematic artwork with vibrant lighting.',
+    filename: 'dreamshaper-7-lcm-f16.gguf',
     downloadUrl:
-      'https://huggingface.co/day0market/LCM_Dreamshaper_v7-gguf/resolve/main/LCM_Dreamshaper_v7_f16.gguf',
+      'https://huggingface.co/darkmaniac7/TokForge-DreamShaper-LCM-GGUF/resolve/main/dreamshaper-7-lcm-f16.gguf',
   },
   {
     id: 'sd-turbo-q8-gguf',
@@ -262,10 +262,52 @@ export const CURATED_MODELS: CuratedModel[] = [
     recommendedFor: ['compact', 'pro'],
     idealFor: 'High-contrast photorealism & sharp subject rendering from Stability AI',
     description:
-      '8-bit near-lossless GGUF of Stability AI’s SD-Turbo for clean edges, vibrant lighting, and reliable prompt adherence.',
+      '8-bit near-lossless GGUF of Stability AI’s SD-Turbo for clean edges, vibrant lighting, and reliable prompt adherence in only 4–6 steps.',
     filename: 'sd_turbo-f16-q8_0.gguf',
     downloadUrl:
       'https://huggingface.co/Green-Sky/SD-Turbo-GGUF/resolve/main/sd_turbo-f16-q8_0.gguf',
+  },
+  {
+    id: 'realistic-vision-v6-q8',
+    name: 'Realistic Vision v6.0 (Q8_0 HD Photorealism)',
+    kind: 'image',
+    tier: 'pro',
+    badge: '★ Ultra HD Photorealism • 1.76 GB',
+    badgeTone: 'success',
+    sizeLabel: '1.76 GB',
+    sizeMb: 1765,
+    minRamGb: 6,
+    ramEstimate: '~1.9 GB RAM',
+    metalSpeed: '~5s (8 steps)',
+    cpuSpeed: '~36s (8 steps)',
+    recommendedFor: ['compact', 'pro'],
+    idealFor: 'Lifelike portraits, natural skin textures, real-world scenes & cinematic photography',
+    description:
+      'Top-rated SD photorealism model with HyperVAE and 8-bit Q8_0 precision. Delivers stunning human portraits, natural lighting, and sharp architectural details.',
+    filename: 'realisticVisionV60B1_v51HyperVAE-Q8_0.gguf',
+    downloadUrl:
+      'https://huggingface.co/second-state/Realistic_Vision_V6.0_B1-GGUF/resolve/main/realisticVisionV60B1_v51HyperVAE-Q8_0.gguf',
+  },
+  {
+    id: 'dreamshaper-8-lcm-q8',
+    name: 'DreamShaper 8 LCM (Q8_0 High-Clarity GGUF)',
+    kind: 'image',
+    tier: 'compact',
+    badge: 'Sharp 8-Bit Art • 1.80 GB',
+    badgeTone: 'accent',
+    sizeLabel: '1.80 GB',
+    sizeMb: 1802,
+    minRamGb: 6,
+    ramEstimate: '~1.9 GB RAM',
+    metalSpeed: '~5s (8 steps)',
+    cpuSpeed: '~34s (8 steps)',
+    recommendedFor: ['compact', 'pro'],
+    idealFor: 'Digital art, anime, fantasy landscapes, concept design & vibrant illustrations',
+    description:
+      'Latest generation DreamShaper 8 with Latent Consistency Model (LCM) and Q8_0 precision. Delivers rich color gradients, sharp lines, and vivid lighting in 6–8 steps.',
+    filename: 'DreamShaper8_LCM_q8_0.gguf',
+    downloadUrl:
+      'https://huggingface.co/haven-ai-companion/dreamshaper8-lcm-gguf/resolve/main/DreamShaper8_LCM_q8_0.gguf',
   },
   {
     id: 'dreamshaper-7-lcm-q4',

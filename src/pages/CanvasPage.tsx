@@ -52,8 +52,15 @@ export function CanvasPage() {
       }
 
       try {
-        const imageModels = await listModels('image')
-        const activeModel = imageModels.find((m) => m.is_default === 1) ?? imageModels[0]
+        const [savedModelId, imageModels] = await Promise.all([
+          getSetting('default_image_model_id'),
+          listModels('image'),
+        ])
+        const activeModel =
+          imageModels.find((m) => m.id === savedModelId) ??
+          imageModels.find((m) => m.is_default === 1) ??
+          imageModels[0]
+
         if (!activeModel) {
           const fallbackUrl = buildFallbackSvgDataUrl(prompt, 0)
           if (showCard) {
@@ -79,21 +86,25 @@ export function CanvasPage() {
         ])
         const iframeCfg = iframeRef.current?.contentWindow?.__SB_CANVAS_IMG_CONFIG__
 
-        const parsedRes = Number(iframeCfg?.res || savedRes || 384)
-        const dim = parsedRes === 512 || parsedRes === 768 ? parsedRes : 384
+        // Default to standard 512x512 matching CreatePage
+        const parsedRes = Number(iframeCfg?.res || savedRes || 512)
+        const dim = parsedRes === 384 || parsedRes === 768 ? parsedRes : 512
         const width = dim
         const height = dim
 
-        const parsedSteps = Number(iframeCfg?.steps || savedSteps || (isFast ? 6 : 8))
-        const steps = !isNaN(parsedSteps) && parsedSteps >= 2 && parsedSteps <= 30 ? parsedSteps : (isFast ? 6 : 8)
+        const parsedSteps = Number(iframeCfg?.steps || savedSteps || (isFast ? 6 : 20))
+        const steps = !isNaN(parsedSteps) && parsedSteps >= 2 && parsedSteps <= 30 ? parsedSteps : (isFast ? 6 : 20)
 
         const parsedCfg = savedCfg ? parseFloat(savedCfg) : NaN
-        const cfgScale = !isNaN(parsedCfg) && parsedCfg > 0 ? parsedCfg : (isFast ? 1.0 : 5.0)
-        const samplingMethod = savedSampler || (isLcm ? 'lcm' : 'euler_a')
+        const cfgScale = !isNaN(parsedCfg) && parsedCfg > 0 ? parsedCfg : (isFast ? 1.0 : 7.0)
+        const samplingMethod = savedSampler || (isLcm ? 'lcm' : undefined)
+        const DEFAULT_NEGATIVE_PROMPT =
+          'ugly, deformed, noisy, blurry, low contrast, oversaturated, grainy, pixelated, bad anatomy, mutated, extra limbs, artifacts'
 
         const { result, cancel } = generateImage({
           modelPath: activeModel.path,
           prompt,
+          negativePrompt: DEFAULT_NEGATIVE_PROMPT,
           width,
           height,
           steps,
@@ -101,12 +112,13 @@ export function CanvasPage() {
           samplingMethod,
         })
 
+        // Generous 5-minute timeout so cold start model load on Apple Silicon / CPU never prematurely aborts
         let timeoutHandle: ReturnType<typeof setTimeout> | null = null
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutHandle = setTimeout(() => {
             cancel()
-            reject(new Error('Canvas image generation timed out after 45s'))
-          }, 45_000)
+            reject(new Error('Canvas image generation timed out after 300s'))
+          }, 300_000)
         })
 
         const filePath = await Promise.race([result, timeoutPromise]).finally(() => {
@@ -117,7 +129,7 @@ export function CanvasPage() {
         await insertImage({
           id: `canvas-img-${Date.now()}`,
           prompt,
-          negativePrompt: null,
+          negativePrompt: DEFAULT_NEGATIVE_PROMPT,
           filePath,
           seed: null,
           steps,
@@ -131,11 +143,12 @@ export function CanvasPage() {
         showToast('AI image rendered right on your Canvas!', 'success')
         return dataUrl
       } catch (err) {
-        console.warn('Canvas AI image generation fallback:', err)
+        console.error('Canvas AI image generation error:', err)
         const fallbackUrl = buildFallbackSvgDataUrl(prompt, 0)
         if (showCard) {
           jobBridge?.finish(jobId, fallbackUrl, prompt)
         }
+        showToast(`Image generation failed: ${String(err)}`, 'warning')
         return fallbackUrl
       }
     },
