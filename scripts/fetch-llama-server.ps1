@@ -27,26 +27,16 @@ Invoke-WebRequest -Uri $url -OutFile $zipPath
 Write-Host 'Extracting...'
 Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
 
-# Only these files are required to run llama-server.exe. The many
-# ggml-cpu-*.dll variants are kept so the app works on any x64 CPU
-# (the right one is auto-selected at runtime based on detected CPU features).
-$keep = @(
-  'llama-server.exe',
-  'llama-server-impl.dll',
-  'llama.dll',
-  'llama-common.dll',
-  'mtmd.dll',
-  'ggml.dll',
-  'ggml-base.dll',
-  'ggml-rpc.dll',
-  'libomp.dll',
-  'LICENSE-LLVM-OpenMP'
-) + (Get-ChildItem $extractDir -Filter 'ggml-cpu-*.dll').Name
-
-foreach ($file in $keep) {
-  Copy-Item (Join-Path $extractDir $file) (Join-Path $destDir $file) -Force
+# Copy llama-server.exe and all required runtime and CPU variant DLLs
+Copy-Item (Join-Path $extractDir 'llama-server.exe') $destDir -Force
+$copiedDlls = Get-ChildItem $extractDir -Filter '*.dll'
+foreach ($dll in $copiedDlls) {
+  Copy-Item $dll.FullName (Join-Path $destDir $dll.Name) -Force
+}
+if (Test-Path (Join-Path $extractDir 'LICENSE-LLVM-OpenMP')) {
+  Copy-Item (Join-Path $extractDir 'LICENSE-LLVM-OpenMP') $destDir -Force
 }
 
 Remove-Item $vendorDir -Recurse -Force
 
-Write-Host "Done. $($keep.Count) files copied to $destDir"
+Write-Host "Done. llama-server.exe and $($copiedDlls.Count) DLLs copied to $destDir"

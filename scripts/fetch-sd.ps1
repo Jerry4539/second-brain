@@ -30,6 +30,9 @@ Write-Host 'Extracting...'
 Expand-Archive -Path $zipPath -DestinationPath $destDir -Force
 
 Remove-Item $zipPath -Force
+if (Test-Path $vendorDir) {
+  Remove-Item $vendorDir -Recurse -Force
+}
 
 Write-Host "Done. Contents of $destDir :"
 Get-ChildItem $destDir | Select-Object Name

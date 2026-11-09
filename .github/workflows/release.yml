@@ -48,6 +48,47 @@ jobs:
           touch src-tauri/resources/onnxruntime/placeholder.txt
           touch src-tauri/resources/laya/placeholder.txt
 
+      - name: Fetch Windows AI runtimes (llama-server, sd-cli, onnxruntime)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          & scripts\fetch-llama-server.ps1
+          & scripts\fetch-sd.ps1
+          & scripts\fetch-onnxruntime.ps1
+          Write-Host "Verifying bundled Windows resources:"
+          Get-ChildItem -Recurse src-tauri\resources | Select-Object FullName
+          if (-not (Test-Path "src-tauri\resources\llama\llama-server.exe")) {
+            throw "llama-server.exe is missing from src-tauri\resources\llama"
+          }
+          if (-not (Test-Path "src-tauri\resources\sd\sd-cli.exe")) {
+            throw "sd-cli.exe is missing from src-tauri\resources\sd"
+          }
+          if (-not (Test-Path "src-tauri\resources\onnxruntime\onnxruntime.dll")) {
+            throw "onnxruntime.dll is missing from src-tauri\resources\onnxruntime"
+          }
+
+      - name: Fetch macOS AI runtimes (llama-server, sd-cli, onnxruntime)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          bash scripts/setup-mac.sh
+          echo "Verifying bundled macOS resources:"
+          ls -la src-tauri/resources/llama
+          ls -la src-tauri/resources/sd
+          ls -la src-tauri/resources/onnxruntime
+          if [ ! -f "src-tauri/resources/llama/llama-server" ]; then
+            echo "Error: llama-server is missing from src-tauri/resources/llama" >&2
+            exit 1
+          fi
+          if [ ! -f "src-tauri/resources/sd/sd-cli" ]; then
+            echo "Error: sd-cli is missing from src-tauri/resources/sd" >&2
+            exit 1
+          fi
+          if [ ! -f "src-tauri/resources/onnxruntime/libonnxruntime.dylib" ]; then
+            echo "Error: libonnxruntime.dylib is missing from src-tauri/resources/onnxruntime" >&2
+            exit 1
+          fi
+
       - name: Pre-populate NSIS and nsis_tauri_utils (Windows)
         if: matrix.platform == 'windows-latest'
         shell: pwsh

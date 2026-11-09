@@ -32,5 +32,8 @@ Copy-Item $dll.FullName (Join-Path $destDir 'onnxruntime.dll') -Force
 
 Remove-Item $extractDir -Recurse -Force
 Remove-Item $zipPath -Force
+if (Test-Path $vendorDir) {
+  Remove-Item $vendorDir -Recurse -Force
+}
 
 Write-Host "Done. $(Join-Path $destDir 'onnxruntime.dll')"

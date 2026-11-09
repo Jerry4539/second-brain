@@ -675,6 +675,12 @@ async fn run_cli_generation(
     cmd.env("DYLD_LIBRARY_PATH", parent);
     #[cfg(target_os = "linux")]
     cmd.env("LD_LIBRARY_PATH", parent);
+    #[cfg(windows)]
+    {
+      if let Ok(current_path) = std::env::var("PATH") {
+        cmd.env("PATH", format!("{};{}", parent.display(), current_path));
+      }
+    }
   }
   #[cfg(windows)]
   {

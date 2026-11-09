@@ -1,6 +1,27 @@
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
+/// Normalizes a path, safely stripping the Windows verbatim prefix (`\\?\` or `\\?\UNC\`)
+/// so that child processes (`std::process::Command` / `tokio::process::Command`) and
+/// Win32 APIs do not fail with error 2 or error 123.
+pub fn normalize_path(path: PathBuf) -> PathBuf {
+  #[cfg(windows)]
+  {
+    let s = path.to_string_lossy();
+    if let Some(stripped) = s.strip_prefix(r"\\?\UNC\") {
+      PathBuf::from(format!(r"\\{stripped}"))
+    } else if let Some(stripped) = s.strip_prefix(r"\\?\") {
+      PathBuf::from(stripped)
+    } else {
+      path
+    }
+  }
+  #[cfg(not(windows))]
+  {
+    path
+  }
+}
+
 /// Resolves a resource file or directory across development, unbundled debug,
 /// and packaged production builds on Windows/macOS.
 pub fn resolve_resource(app: &AppHandle, relative: &str) -> Result<PathBuf, String> {
@@ -11,59 +32,79 @@ pub fn resolve_resource(app: &AppHandle, relative: &str) -> Result<PathBuf, Stri
   {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join(relative);
     if manifest.exists() {
-      return Ok(manifest);
+      return Ok(normalize_path(manifest));
     }
     let dev_path = PathBuf::from("src-tauri").join("resources").join(relative);
     if dev_path.exists() {
-      return Ok(dev_path);
+      return Ok(normalize_path(dev_path));
     }
   }
 
   // 2. Try Tauri's resource_dir directly and under resources/
   if let Ok(base) = app.path().resource_dir() {
-    let direct = base.join(relative);
+    let direct = normalize_path(base.join(relative));
     if direct.exists() {
       return Ok(direct);
     }
-    let with_res = base.join("resources").join(relative);
+    let with_res = normalize_path(base.join("resources").join(relative));
     if with_res.exists() {
       return Ok(with_res);
     }
   }
 
-  // 2. Try relative to current executable directory
+  // 3. Try relative to current executable directory
   if let Ok(exe) = std::env::current_exe() {
     if let Some(exe_dir) = exe.parent() {
-      let direct = exe_dir.join(relative);
+      let direct = normalize_path(exe_dir.join(relative));
       if direct.exists() {
         return Ok(direct);
       }
-      let with_res = exe_dir.join("resources").join(relative);
+      let with_res = normalize_path(exe_dir.join("resources").join(relative));
       if with_res.exists() {
         return Ok(with_res);
       }
     }
   }
 
-  // 3. Try dev mode paths relative to working directory
+  // 4. Try app_data_dir (in case installed or copied there)
+  if let Ok(app_data) = app.path().app_data_dir() {
+    let direct = normalize_path(app_data.join(relative));
+    if direct.exists() {
+      return Ok(direct);
+    }
+    let with_res = normalize_path(app_data.join("resources").join(relative));
+    if with_res.exists() {
+      return Ok(with_res);
+    }
+  }
+
+  // 5. Try dev mode paths relative to working directory
   let dev_path = PathBuf::from("src-tauri").join("resources").join(relative);
   if dev_path.exists() {
-    return Ok(dev_path);
+    return Ok(normalize_path(dev_path));
   }
   let dev_path2 = PathBuf::from("resources").join(relative);
   if dev_path2.exists() {
-    return Ok(dev_path2);
+    return Ok(normalize_path(dev_path2));
   }
 
-  // 4. Try manifest directory (for cargo test / cargo run in subfolder)
+  // 6. Try manifest directory (for cargo test / cargo run in subfolder)
   let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources").join(relative);
   if manifest.exists() {
-    return Ok(manifest);
+    return Ok(normalize_path(manifest));
   }
 
   // Default fallback for descriptive error reporting
   let base = app.path().resource_dir().map_err(|e| e.to_string())?;
-  Ok(base.join("resources").join(relative))
+  let fallback_res = normalize_path(base.join("resources").join(relative));
+  if fallback_res.exists() {
+    return Ok(fallback_res);
+  }
+  let fallback_direct = normalize_path(base.join(relative));
+  if fallback_direct.exists() {
+    return Ok(fallback_direct);
+  }
+  Ok(fallback_res)
 }
 
 #[cfg(test)]
