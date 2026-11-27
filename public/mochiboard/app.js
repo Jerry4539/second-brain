@@ -1734,11 +1734,59 @@
       else if (e.target.matches('span') && !e.target.isContentEditable) startEdit(c.id, e.target);
     }
   });
-  // trackpad: two fingers pan, pinch (or ⌘/ctrl + scroll) zooms
+  // trackpad & gestures: native Mac pinch-to-zoom, two-finger smooth pan, and mouse wheel
+  let gestureZ0 = 1, gesturePt = null;
+  window.addEventListener('gesturestart', e => {
+    if (e.target.closest('.tray, .m-bubble, .cpop, .home, .m-chat, .design, .side, .row-menu, .stamp-pick, .wheel-stamps, .docview, .settings, .shapepick, .tplpick')) return;
+    e.preventDefault();
+    gestureZ0 = view.z;
+    gesturePt = { x: e.clientX, y: e.clientY };
+  }, { passive: false });
+  window.addEventListener('gesturechange', e => {
+    if (gesturePt && e.scale) {
+      e.preventDefault();
+      zoomAt(gesturePt.x, gesturePt.y, gestureZ0 * e.scale, true);
+    }
+  }, { passive: false });
+  window.addEventListener('gestureend', e => {
+    if (gesturePt) {
+      e.preventDefault();
+      gesturePt = null;
+    }
+  }, { passive: false });
+
   stage.addEventListener('wheel', e => {
-    if (e.target.closest('.tray, .m-bubble, .cpop, .home, .m-chat, .design, .side, .row-menu, .stamp-pick, .wheel-stamps, .docview, .settings, .shapepick, .tplpick')) return; e.preventDefault();
-    if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, view.z * Math.exp(-e.deltaY * .01), true);
-    else { view.x -= e.deltaX; view.y -= e.deltaY; viewSoon(); }
+    if (e.target.closest('.tray, .m-bubble, .cpop, .home, .m-chat, .design, .side, .row-menu, .stamp-pick, .wheel-stamps, .docview, .settings, .shapepick, .tplpick')) return;
+    e.preventDefault();
+
+    // Pinch-to-zoom (trackpad) or ⌘/ctrl + wheel (mouse)
+    if (e.ctrlKey || e.metaKey) {
+      const clampedDy = Math.max(-50, Math.min(50, e.deltaY));
+      const factor = Math.exp(-clampedDy * 0.007);
+      zoomAt(e.clientX, e.clientY, view.z * factor, true);
+    } else {
+      let dx = e.deltaX;
+      let dy = e.deltaY;
+
+      // Shift key turns vertical scroll into horizontal pan
+      if (e.shiftKey && !dx) {
+        dx = dy;
+        dy = 0;
+      }
+
+      // Line / page delta mode normalization for external mice vs trackpads
+      if (e.deltaMode === 1) {
+        dx *= 22;
+        dy *= 22;
+      } else if (e.deltaMode === 2) {
+        dx *= 300;
+        dy *= 300;
+      }
+
+      view.x -= dx;
+      view.y -= dy;
+      viewSoon();
+    }
   }, { passive: false });
 
   // ---------- the tray: drag ideas out onto the board ----------

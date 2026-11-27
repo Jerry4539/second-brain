@@ -21,10 +21,12 @@ export function Sidebar() {
       if (detail) setMascotChoice(detail)
     }
     window.addEventListener('second-brain-mascot-change', handler)
+
     const storageHandler = () => {
       setMascotChoice(safeStorage.getItem('second-brain-mascot-choice') || 'cap')
     }
     window.addEventListener('storage', storageHandler)
+
     return () => {
       window.removeEventListener('second-brain-mascot-change', handler)
       window.removeEventListener('storage', storageHandler)

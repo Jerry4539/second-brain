@@ -56,6 +56,8 @@ interface ScreenTheme {
   muted: string
   primary: string
   onPrimary: string
+  font?: string
+  headFont?: string
 }
 
 const VALID_COLORS = ['white', 'pink', 'butter', 'mint', 'lilac', 'sky', 'peach'] as const
@@ -185,22 +187,35 @@ function resolveScreenTheme(text: string, fallbackDark = false): ScreenTheme | u
     /\b(dark|night|black|midnight|obsidian|cyber|neon|oled|amoled)\b/i.test(lower) ||
     (!/\b(light|white|bright|day)\b/i.test(lower) && fallbackDark)
 
+  const isPureBlack = /\b(black|oled|amoled|pitch|netflix)\b/i.test(lower)
+
+  // 1. User explicit color requests take HIGHEST precedence over brand defaults!
   let primary = wantsDark ? '#6366f1' : '#18181b'
-  if (/\b(instagram|insta|pink|rose|magenta|dating|beauty)\b/i.test(lower)) primary = '#e1306c'
-  else if (/\b(spotify|whatsapp|music|green|emerald|mint|fitness|health)\b/i.test(lower)) primary = '#1db954'
-  else if (/\b(youtube|netflix|video|red|crimson)\b/i.test(lower)) primary = '#ef4444'
-  else if (/\b(twitter|linkedin|facebook|blue|sky|ocean|travel|flight)\b/i.test(lower)) primary = '#0ea5e9'
-  else if (/\b(discord|twitch|crypto|web3|ai|purple|violet|indigo)\b/i.test(lower)) primary = '#8b5cf6'
-  else if (/\b(amazon|shop|food|delivery|orange|amber|gold)\b/i.test(lower)) primary = '#f59e0b'
+  if (/\b(purple|violet|lavender|plum|indigo)\b/i.test(lower)) primary = '#9333ea'
+  else if (/\b(red|crimson|ruby|scarlet)\b/i.test(lower)) primary = '#ef4444'
+  else if (/\b(pink|rose|magenta)\b/i.test(lower)) primary = '#e1306c'
+  else if (/\b(green|emerald|mint|lime)\b/i.test(lower)) primary = '#10b981'
+  else if (/\b(blue|cyan|teal|aqua|sky|ocean)\b/i.test(lower)) primary = '#0ea5e9'
+  else if (/\b(orange|amber|gold|yellow)\b/i.test(lower)) primary = '#f59e0b'
+  // 2. Brand default fallbacks ONLY when user did not specify an accent color
+  else if (/\b(netflix)\b/i.test(lower)) primary = '#e50914'
+  else if (/\b(youtube)\b/i.test(lower)) primary = '#ef4444'
+  else if (/\b(instagram|insta)\b/i.test(lower)) primary = '#e1306c'
+  else if (/\b(spotify|whatsapp|music|fitness|health)\b/i.test(lower)) primary = '#1db954'
+  else if (/\b(twitter|linkedin|facebook)\b/i.test(lower)) primary = '#0ea5e9'
+  else if (/\b(discord|twitch|crypto|web3|ai)\b/i.test(lower)) primary = '#8b5cf6'
+  else if (/\b(amazon|shop|food|delivery)\b/i.test(lower)) primary = '#f59e0b'
 
   if (wantsDark) {
     return {
-      bg: '#0c0c10',
-      surface: '#181820',
+      bg: isPureBlack ? '#000000' : '#0c0c10',
+      surface: isPureBlack ? '#121118' : '#181820',
       text: '#f4f4f7',
       muted: '#9ca3af',
       primary,
       onPrimary: '#ffffff',
+      font: 'DM Sans',
+      headFont: 'Space Grotesk',
     }
   }
 
@@ -212,6 +227,8 @@ function resolveScreenTheme(text: string, fallbackDark = false): ScreenTheme | u
       muted: '#71717a',
       primary,
       onPrimary: '#ffffff',
+      font: 'DM Sans',
+      headFont: 'Space Grotesk',
     }
   }
 
@@ -227,6 +244,20 @@ function extractCallerName(prompt: string): string {
 }
 
 function extractScreenTopic(prompt: string, boardName?: string, recentChat?: string[]): string {
+  // 1. Direct brand detection
+  const brandMatch = prompt.match(/\b(netflix|youtube|spotify|instagram|threads|tiktok|uber|airbnb|doordash|discord|slack|twitch|amazon|apple|twitter|whatsapp|telegram)\b/i)
+  if (brandMatch) {
+    const b = brandMatch[1].toLowerCase()
+    return b.charAt(0).toUpperCase() + b.slice(1)
+  }
+
+  // 2. Direct archetype detection
+  const nicheMatch = prompt.match(/\b(streaming|crypto|fitness|gym|workout|recipe|food delivery|real estate|dating|meditation|podcast|banking|wallet|travel|booking)\b/i)
+  if (nicheMatch) {
+    const n = nicheMatch[1].toLowerCase()
+    return n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+  }
+
   const cleaned = prompt
     .replace(
       /^(?:can you\s+|could you\s+|please\s+|hey\s+|bro\s+)?(?:create|design|build|make|draft|draw|show|add|generate)\s+(?:me\s+)?(?:an?\s+|the\s+)?/i,
@@ -237,7 +268,7 @@ function extractScreenTopic(prompt: string, boardName?: string, recentChat?: str
       ' ',
     )
     .replace(/\b(?:similar to|like|inspired by|in|with|using|for|of)\b/gi, ' ')
-    .replace(/\b(?:dark|light|night|black|white|theme|mode|style)\b/gi, ' ')
+    .replace(/\b(?:dark|light|night|black|white|red|blue|green|purple|orange|yellow|pink|theme|mode|style|design)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 
@@ -247,6 +278,7 @@ function extractScreenTopic(prompt: string, boardName?: string, recentChat?: str
   if (recentChat && recentChat.length > 0) {
     for (let i = recentChat.length - 1; i >= 0; i--) {
       const msg = recentChat[i]
+      if (/\bnetflix\b/i.test(msg)) return 'Netflix'
       if (/\b(instagram|insta)\b/i.test(msg)) return 'Instagram'
       if (/\b(whatsapp|wa|calling|call)\b/i.test(msg)) return 'WhatsApp'
       if (/\b(spotify|music|song)\b/i.test(msg)) return 'Music Player'
@@ -345,67 +377,368 @@ function designDomainScreens(prompt: string, snapshot: MochiBoardSnapshot, force
     }
   }
 
-  // 2. "Next screen in the flow" or Profile / Detail follow-up screen
-  const isNextScreenAsk = /\b(next screen|another screen|second screen|profile screen|detail screen|comments screen)\b/i.test(lower)
-  if (isNextScreenAsk || /\b(profile|account|bio|portfolio)\b/i.test(lower)) {
-    const isSocial = /\b(instagram|insta|social|creator|feed|story|reel)\b/i.test(contextText)
-    const screenTitle = isSocial ? 'Creator Profile' : `${topic} — Profile & Details`
+  // 2. Intelligent Multi-Screen Flow Follow-up ("next screen", "another screen", "second screen", etc.)
+  const isNextScreenAsk =
+    /\b(next screen|another screen|second screen|2nd screen|3rd screen|third screen|fourth screen|4th screen|another view|next step|follow[- ]?up screen|detail screen|details screen|checkout screen|cart screen|player screen)\b/i.test(
+      lower,
+    ) ||
+    (/\b(add|create|make|design)\b/i.test(lower) &&
+      /\b(another|next|second|2nd|third|3rd|detail|details|flow)\b/i.test(lower) &&
+      frames.length > 0)
+
+  if (isNextScreenAsk && frames.length > 0) {
+    const lastFrame = frames[frames.length - 1]
+    const firstFrame = frames[0]
+    const allFrameNames = frames.map((f) => f.name || '').join(' ')
+    const flowContext = `${allFrameNames} ${contextText}`.toLowerCase()
+    const screenNum = frames.length + 1
+
+    // A. Netflix / Video Streaming Flow
+    if (/\b(netflix|movie|movies|cinema|stream|streaming|tv show|series|film)\b/i.test(flowContext)) {
+      const isNetflix = /\bnetflix\b/i.test(flowContext)
+      const brand = isNetflix ? 'Netflix' : 'StreamPlay'
+      const streamingTheme: ScreenTheme = {
+        bg: '#000000',
+        surface: '#141416',
+        text: '#ffffff',
+        muted: '#9ca3af',
+        primary: theme?.primary || (isNetflix ? '#e50914' : '#ef4444'),
+        onPrimary: '#ffffff',
+        font: 'DM Sans',
+        headFont: 'Space Grotesk',
+      }
+      const activeTheme = theme || streamingTheme
+
+      // Screen 3+: Video Player
+      if (frames.length >= 2 || /\b(player|watching|video player|play screen)\b/i.test(lower)) {
+        return {
+          say: `I added Screen #${screenNum}: “Now Playing” video player with playback scrubber and audio controls ✦`,
+          screens: [
+            {
+              name: `${brand} — Video Player${themeLabel}`,
+              device: 'iPhone',
+              theme: activeTheme,
+              items: [
+                { piece: 'Nav bar', title: 'S5:E1 “The Crawl”', back: true, icon: 'cast' },
+                {
+                  piece: 'Card',
+                  title: 'Stranger Things 5: Episode 1',
+                  text: '00:18:24 / 00:58:10 · 4K Ultra HD · Dolby Atmos Spatial Sound',
+                  img: 'Cinematic video player scene',
+                },
+                { piece: 'Button', text: '❚❚  Pause Playback', style: 'primary' },
+                {
+                  piece: 'Heading',
+                  text: 'Audio & Subtitle Settings',
+                  sub: 'English [Original] · Dolby Atmos · English [CC]',
+                  size: 16,
+                },
+                {
+                  piece: 'List row',
+                  icon: 'skip_next',
+                  title: 'Up Next: Episode 2 · “The Vanishing”',
+                  sub: 'Starts in 10s · Tap to play immediately',
+                },
+                {
+                  piece: 'List row',
+                  icon: 'speed',
+                  title: 'Playback Speed: 1.0x Normal',
+                  sub: 'Adjust speed (0.75x, 1.25x, 1.5x)',
+                },
+              ],
+            },
+          ],
+          next: ['Add search & category screen', 'Make a website layout', 'Try a different color style'],
+        }
+      }
+
+      // Screen 2: Show Details & Episode Guide
+      return {
+        say: `I added Screen #${screenNum}: “Stranger Things 5 Details” with episode guide and download actions ✦`,
+        screens: [
+          {
+            name: `${brand} — Show Details${themeLabel}`,
+            device: 'iPhone',
+            theme: activeTheme,
+            items: [
+              { piece: 'Nav bar', title: 'Stranger Things 5', back: true, icon: 'share' },
+              {
+                piece: 'Card',
+                title: 'Stranger Things · Season 5 (2026)',
+                text: 'TV-MA · 8 Episodes · 98% Match · In the aftermath of the Upside Down rift, the party faces their final battle for Hawkins.',
+                img: 'Stranger Things 5 backdrop cover',
+              },
+              { piece: 'Button', text: '▶ Resume S5:E1 “The Crawl”', style: 'primary' },
+              { piece: 'Button', text: '⬇ Download Season 5 (8.4 GB)', style: 'secondary' },
+              {
+                piece: 'Heading',
+                text: 'Episodes · Season 5',
+                sub: 'All episodes available now in 4K HDR',
+                size: 18,
+              },
+              {
+                piece: 'List row',
+                icon: 'play_circle_outline',
+                title: 'E1 · “The Crawl” · 58m',
+                sub: 'The party regroups as strange seismic activity begins beneath Hawkins.',
+              },
+              {
+                piece: 'List row',
+                icon: 'play_circle_outline',
+                title: 'E2 · “The Vanishing of...” · 52m',
+                sub: 'Dustin and Steve uncover an abandoned military radio frequency.',
+              },
+              {
+                piece: 'List row',
+                icon: 'play_circle_outline',
+                title: 'E3 · “The Turnbow Trap” · 55m',
+                sub: 'A desperate plan is put into motion at the radio station.',
+              },
+              {
+                piece: 'Tab bar',
+                tabs: [
+                  ['home', 'Home'],
+                  ['movie', 'New & Hot'],
+                  ['video_library', 'My List'],
+                  ['download', 'Downloads'],
+                ],
+                active: 0,
+              },
+            ],
+          },
+        ],
+        next: ['Add the video player screen', 'Add search & explore screen', 'Make a website layout'],
+      }
+    }
+
+    // B. E-Commerce / Shopping Flow
+    if (/\b(shop|store|ecommerce|e-commerce|cart|checkout|product|shoe|fashion)\b/i.test(flowContext)) {
+      if (frames.length >= 2 || /\b(cart|checkout|payment|order)\b/i.test(lower)) {
+        return {
+          say: `I added Screen #${screenNum}: “Order Checkout” with shipping and Apple Pay CTA ✦`,
+          screens: [
+            {
+              name: `${topic} — Checkout${themeLabel}`,
+              device: 'iPhone',
+              theme,
+              items: [
+                { piece: 'Nav bar', title: 'Checkout & Pay', back: true, icon: 'lock' },
+                {
+                  piece: 'Heading',
+                  text: 'Order Summary (1 Item)',
+                  sub: 'Free Express Delivery included',
+                  size: 18,
+                },
+                {
+                  piece: 'List row',
+                  icon: 'shopping_bag',
+                  title: 'Aero Pro Runner · Size 10 (US)',
+                  sub: 'Qty: 1 · $189.00 · Midnight Obsidian',
+                },
+                {
+                  piece: 'List row',
+                  icon: 'local_shipping',
+                  title: 'Shipping Address: Jerry’s Loft',
+                  sub: 'Estimated Delivery: Friday, Nov 30',
+                },
+                {
+                  piece: 'List row',
+                  icon: 'credit_card',
+                  title: 'Payment: Apple Pay (•••• 4920)',
+                  sub: 'Total: $189.00 (Taxes included)',
+                },
+                { piece: 'Button', text: 'Confirm & Pay $189.00 →', style: 'primary' },
+              ],
+            },
+          ],
+          next: ['Add order confirmed screen', 'Make a website layout', 'Try a different color style'],
+        }
+      }
+
+      return {
+        say: `I added Screen #${screenNum}: “Product Details” with sizing, color swatches, and add to bag CTA ✦`,
+        screens: [
+          {
+            name: `${topic} — Product Details${themeLabel}`,
+            device: 'iPhone',
+            theme,
+            items: [
+              { piece: 'Nav bar', title: `${topic} Drop`, back: true, icon: 'favorite_border' },
+              {
+                piece: 'Card',
+                title: 'Aero Pro Limited Edition · $189.00',
+                text: 'Engineered with responsive carbon foam cushioning and adaptive knit upper. 4.9 ★ (420 reviews)',
+                img: 'Featured product detail showcase',
+              },
+              {
+                piece: 'Heading',
+                text: 'Select Size (US Men)',
+                sub: 'True to size · 8, 9, 10, 11, 12 in stock',
+                size: 16,
+              },
+              {
+                piece: 'List row',
+                icon: 'palette',
+                title: 'Color: Midnight Obsidian & Crimson',
+                sub: 'Limited stock · Ships today',
+              },
+              {
+                piece: 'List row',
+                icon: 'verified',
+                title: 'Free 30-Day Returns & 2-Yr Warranty',
+                sub: 'Official manufacturer guarantee',
+              },
+              { piece: 'Button', text: 'Add to Bag — $189.00', style: 'primary' },
+              { piece: 'Button', text: 'Buy Instantly with Apple Pay', style: 'secondary' },
+            ],
+          },
+        ],
+        next: ['Add cart & checkout screen', 'Make a website layout', 'Try a different color style'],
+      }
+    }
+
+    // C. Fitness / Workout Flow
+    if (/\b(fitness|gym|workout|exercise|health|training|runner|running|strava)\b/i.test(flowContext)) {
+      if (frames.length >= 2 || /\b(complete|summary|history|stats)\b/i.test(lower)) {
+        return {
+          say: `I added Screen #${screenNum}: “Workout Summary & PR Highlights” ✦`,
+          screens: [
+            {
+              name: `Workout Complete${themeLabel}`,
+              device: 'iPhone',
+              theme,
+              items: [
+                { piece: 'Nav bar', title: 'Workout Complete 🎉', back: false, icon: 'share' },
+                {
+                  piece: 'Heading',
+                  text: 'Great Session, Jerry!',
+                  sub: 'You crushed Push Day · 54 minutes total',
+                  size: 22,
+                },
+                {
+                  piece: 'Card',
+                  title: '465 Active Kcal · 8,420 kg Volume',
+                  text: 'Avg Heart Rate: 142 bpm · Peak: 168 bpm · Fat burn zone: 38 mins',
+                  img: 'Workout achievement rings and trophy',
+                },
+                {
+                  piece: 'List row',
+                  icon: 'emoji_events',
+                  title: 'New PR: Bench Press 85 kg × 8',
+                  sub: '+5 kg increase from last week!',
+                },
+                {
+                  piece: 'List row',
+                  icon: 'insights',
+                  title: 'Recovery Score: 92% Optimal',
+                  sub: 'Rest recommended: 24h before leg day',
+                },
+                { piece: 'Button', text: 'Save to History & Share ✦', style: 'primary' },
+              ],
+            },
+          ],
+          next: ['Add exercise log screen', 'Make a website version', 'Try a different color style'],
+        }
+      }
+
+      return {
+        say: `I added Screen #${screenNum}: “Active Workout Routine” with live rest timer and exercise sets ✦`,
+        screens: [
+          {
+            name: `Active Workout${themeLabel}`,
+            device: 'iPhone',
+            theme,
+            items: [
+              { piece: 'Nav bar', title: 'Chest & Triceps', back: true, icon: 'timer' },
+              {
+                piece: 'Heading',
+                text: 'Rest Timer: 01:15',
+                sub: 'Set 3 of 4 · Barbell Bench Press',
+                size: 20,
+              },
+              {
+                piece: 'Card',
+                title: 'Exercise 1: Barbell Bench Press',
+                text: 'Target: 8–10 reps · Heavy compound movement · Control the eccentric phase',
+                img: 'Gym bench press exercise diagram',
+              },
+              {
+                piece: 'List row',
+                icon: 'check_circle',
+                title: 'Set 1: 75 kg × 10 reps (Done ✓)',
+                sub: 'RPE 7 · Rested 90s',
+              },
+              {
+                piece: 'List row',
+                icon: 'check_circle',
+                title: 'Set 2: 80 kg × 8 reps (Done ✓)',
+                sub: 'RPE 8 · Rested 90s',
+              },
+              {
+                piece: 'List row',
+                icon: 'fitness_center',
+                title: 'Set 3: 85 kg × 8 reps (Current Set)',
+                sub: 'Target: 8 reps to failure',
+              },
+              { piece: 'Button', text: 'Complete Set 3 & Start Rest ⏱', style: 'primary' },
+            ],
+          },
+        ],
+        next: ['Add workout summary screen', 'Make a website layout', 'Try a different color style'],
+      }
+    }
+
+    // D. General Follow-up Screen for ANY topic:
+    const baseTopic = (firstFrame?.name || lastFrame?.name || topic).replace(/\s*[-—].*$/, '').trim()
+    const screenTitle = `${baseTopic} — Step ${screenNum}: Details & Overview`
     return {
-      say: `I added the “${screenTitle}” screen${isDark ? ' in dark theme' : ''} right beside your flow ✦`,
+      say: `I added Screen #${screenNum}: “${screenTitle}” continuing your journey from Screen #1 ✦`,
       screens: [
         {
           name: `${screenTitle}${themeLabel}`,
           device: 'iPhone',
           theme,
           items: [
-            { piece: 'Nav bar', title: isSocial ? '@jerry.studio' : screenTitle, icon: 'settings' },
-            {
-              piece: 'Heading',
-              text: isSocial ? 'Jerry · Product & Visual Creator' : `${topic} Workspace`,
-              sub: isSocial ? '148 Posts  ·  24.8k Followers  ·  312 Following' : 'Pro Member · Active since 2026',
-              size: 20,
-            },
-            { piece: 'Button', text: isSocial ? 'Follow Creator' : 'Edit Profile', style: 'primary' },
+            { piece: 'Nav bar', title: baseTopic, back: true, icon: 'more_vert' },
             {
               piece: 'Card',
-              title: isSocial ? 'Pinned Reel · Dark Mode Design System' : 'Featured Milestone',
-              text: isSocial ? '84.2k plays · “How we crafted a tactile dark interface”' : '98% completion across 12 active workflows',
-              img: isSocial ? 'Pinned creator reel cover' : 'Featured project preview',
+              title: `${baseTopic} · Detailed View`,
+              text: `Detailed breakdown, active items, and deeper controls continuing your flow from Screen #1.`,
+              img: `${baseTopic} detail cover`,
+            },
+            { piece: 'Button', text: `Proceed with ${baseTopic} →`, style: 'primary' },
+            {
+              piece: 'Heading',
+              text: 'Active Items & Details',
+              sub: 'Synced with Screen #1',
+              size: 18,
             },
             {
               piece: 'List row',
-              icon: 'collections',
-              title: isSocial ? 'Saved Collections & Boards' : 'Recent Activity Log',
-              sub: isSocial ? '18 curated design moodboards' : 'Updated 5 minutes ago',
+              icon: 'check_circle_outline',
+              title: 'Primary Milestone Status',
+              sub: 'Connected to previous screen flow',
             },
             {
               piece: 'List row',
-              icon: 'insights',
-              title: isSocial ? 'Creator Insights & Reach' : 'Notifications & Preferences',
-              sub: isSocial ? '+38% engagement this week' : 'All alerts enabled',
+              icon: 'tune',
+              title: 'Custom Preferences & Filters',
+              sub: 'Adjust settings for this stage',
             },
             {
               piece: 'Tab bar',
-              tabs: isSocial
-                ? [
-                    ['home', 'Home'],
-                    ['search', 'Explore'],
-                    ['add_box', 'Post'],
-                    ['movie', 'Reels'],
-                    ['person_outline', 'Profile'],
-                  ]
-                : [
-                    ['home', 'Home'],
-                    ['search', 'Explore'],
-                    ['insights', 'Activity'],
-                    ['person_outline', 'Profile'],
-                  ],
-              active: isSocial ? 4 : 3,
+              tabs: [
+                ['home', 'Home'],
+                ['search', 'Explore'],
+                ['insights', 'Activity'],
+                ['person_outline', 'Profile'],
+              ],
+              active: 1,
             },
           ],
         },
       ],
-      next: ['Make it a website layout', 'Write real copy for these cards', 'Try a different color style'],
+      next: ['Add the next screen in the flow', 'Make it a website layout', 'Try a different color style'],
     }
   }
 
@@ -499,6 +832,151 @@ function designDomainScreens(prompt: string, snapshot: MochiBoardSnapshot, force
         },
       ],
       next: ['Add the next screen in the flow', 'Make it a website layout', 'Write real copy for these cards'],
+    }
+  }
+
+  // 4C. Netflix / Streaming / Movies / Video Entertainment App
+  if (/\b(netflix|movie|movies|cinema|stream|streaming|tv show|series|film|hulu|disney|hbo|prime video|youtube)\b/i.test(lower)) {
+    const isNetflix = /\bnetflix\b/i.test(lower)
+    const brand = isNetflix ? 'Netflix' : 'StreamPlay'
+    const isPureBlack = /\b(black|oled|dark)\b/i.test(lower) || isDark
+    const streamingTheme: ScreenTheme = {
+      bg: isPureBlack ? '#000000' : '#0a0a0e',
+      surface: isPureBlack ? '#141416' : '#181820',
+      text: '#ffffff',
+      muted: '#9ca3af',
+      primary: theme?.primary || (isNetflix ? '#e50914' : '#ef4444'),
+      onPrimary: '#ffffff',
+      font: 'DM Sans',
+      headFont: 'Space Grotesk',
+    }
+    const activeTheme = theme || streamingTheme
+    const isPurplePrompt = /\b(purple|violet|lavender|indigo)\b/i.test(lower)
+    return {
+      say: `I crafted a sleek, ${isDark ? 'dark-themed ' : ''}${brand} streaming screen with billboard hero, continue watching, and trending series ✦`,
+      screens: [
+        {
+          name: `${brand} — Browse${themeLabel}`,
+          device: 'iPhone',
+          theme: activeTheme,
+          items: [
+            { piece: 'Nav bar', title: brand.toUpperCase(), back: false, icon: 'search' },
+            {
+              piece: 'Card',
+              title: isPurplePrompt ? 'Wednesday: Season 2 · Nevermore' : 'Stranger Things 5 · Series Finale',
+              text: isPurplePrompt
+                ? '99% Match · 2026 · 4K HDR · Outcasts, secrets, and dark gothic mystery at Nevermore.'
+                : '98% Match · 2026 · 4K HDR · The fight for Hawkins reaches its epic conclusion.',
+              img: isPurplePrompt ? 'Wednesday Season 2 gothic cinematic billboard' : 'Stranger Things 5 cinematic billboard',
+            },
+            { piece: 'Button', text: isPurplePrompt ? '▶ Play Episode 1 · S2:E1' : '▶ Play Episode 1 · S5:E1', style: 'primary' },
+            {
+              piece: 'Heading',
+              text: 'Continue Watching for Jerry',
+              sub: 'Episodes ready to resume',
+              size: 18,
+            },
+            {
+              piece: 'List row',
+              icon: 'play_arrow',
+              title: 'Cyberpunk: Edgerunners',
+              sub: 'S1:E8 “Stay” · 18m remaining · HDR',
+            },
+            {
+              piece: 'List row',
+              icon: 'local_fire_department',
+              title: 'Squid Game · Season 2',
+              sub: 'Top 10 in TV Shows Today · 99% Match',
+            },
+            {
+              piece: 'List row',
+              icon: 'star',
+              title: 'Arcane: League of Legends',
+              sub: 'Critically Acclaimed · S2 Now Streaming',
+            },
+            {
+              piece: 'Tab bar',
+              tabs: [
+                ['home', 'Home'],
+                ['movie', 'New & Hot'],
+                ['video_library', 'My List'],
+                ['download', 'Downloads'],
+              ],
+              active: 0,
+            },
+          ],
+        },
+      ],
+      next: ['Add the show detail screen', 'Make a website layout', 'Switch to a different genre'],
+    }
+  }
+
+  // 4D. Fitness / Gym / Workout / Health Tracking App
+  if (/\b(fitness|gym|workout|exercise|health|training|crossfit|runner|running|strava|calorie)\b/i.test(lower)) {
+    const activeTheme = theme || {
+      bg: isDark ? '#0c0c10' : '#ffffff',
+      surface: isDark ? '#16161e' : '#f4f4f6',
+      text: isDark ? '#f4f4f7' : '#111827',
+      muted: isDark ? '#9ca3af' : '#6b7280',
+      primary: '#10b981',
+      onPrimary: '#ffffff',
+      font: 'DM Sans',
+      headFont: 'Space Grotesk',
+    }
+    return {
+      say: `I built a ${isDark ? 'dark-themed ' : ''}Fitness & Daily Activity screen with goal rings, quick workouts, and history ✦`,
+      screens: [
+        {
+          name: `Fitness Dashboard${themeLabel}`,
+          device: 'iPhone',
+          theme: activeTheme,
+          items: [
+            { piece: 'Nav bar', title: 'Activity', back: false, icon: 'notifications_none' },
+            {
+              piece: 'Heading',
+              text: 'Daily Goals: 84% Completed',
+              sub: '680 / 800 kcal  ·  48m active  ·  10,420 steps',
+              size: 20,
+            },
+            {
+              piece: 'Card',
+              title: 'Upper Body Hypertrophy · Day 3',
+              text: '45 mins · 4 exercises · Bench Press, Lat Pulldown, DB Shoulder Press',
+              img: 'Gym workout studio preview',
+            },
+            { piece: 'Button', text: 'Start Workout Now ▶', style: 'primary' },
+            {
+              piece: 'Heading',
+              text: 'Recent PRs & Milestones',
+              sub: 'Logged this week',
+              size: 16,
+            },
+            {
+              piece: 'List row',
+              icon: 'fitness_center',
+              title: 'Deadlift · 140 kg (New Record)',
+              sub: '3 reps · RPE 9 · Yesterday at 6:30 PM',
+            },
+            {
+              piece: 'List row',
+              icon: 'directions_run',
+              title: 'Morning 5K Outdoor Run',
+              sub: '24:18 · 4:51 /km pace · 340 kcal',
+            },
+            {
+              piece: 'Tab bar',
+              tabs: [
+                ['home', 'Summary'],
+                ['fitness_center', 'Workouts'],
+                ['insights', 'Progress'],
+                ['person_outline', 'Profile'],
+              ],
+              active: 0,
+            },
+          ],
+        },
+      ],
+      next: ['Add workout logging screen', 'Make a website version', 'Try a different color style'],
     }
   }
 
@@ -818,27 +1296,33 @@ function designDomainScreens(prompt: string, snapshot: MochiBoardSnapshot, force
         device: 'iPhone',
         theme,
         items: [
-          { piece: 'Nav bar', title: topic, back: false, icon: 'notifications_none' },
+          { piece: 'Nav bar', title: topic, back: false, icon: 'search' },
           { piece: 'Search', text: `Search ${topic.toLowerCase()}…` },
           {
             piece: 'Card',
-            title: `${topic} · Featured Spotlight`,
-            text: `Explore top picks, live updates, and curated collections in ${topic}.`,
-            img: `${topic} featured cover`,
+            title: `Featured ${topic} Spotlight`,
+            text: `Explore trending items, live updates, and curated collections for ${topic}.`,
+            img: `${topic} Showcase Cover`,
+          },
+          { piece: 'Button', text: `Explore ${topic} →`, style: 'primary' },
+          {
+            piece: 'Heading',
+            text: `Trending in ${topic}`,
+            sub: 'Curated by Second Brain AI',
+            size: 18,
           },
           {
             piece: 'List row',
             icon: 'auto_awesome',
-            title: `Trending in ${topic}`,
-            sub: 'Updated just now · 12 new items',
+            title: `Top ${topic} Highlights`,
+            sub: 'Updated just now · 12 fresh picks',
           },
           {
             piece: 'List row',
             icon: 'bookmark_border',
             title: 'Saved & Pinned Items',
-            sub: 'Quick access to your favorite workflows',
+            sub: 'Quick access to your favorites',
           },
-          { piece: 'Button', text: `Explore ${topic} →`, style: 'primary' },
           {
             piece: 'Tab bar',
             tabs: [
@@ -897,31 +1381,117 @@ export async function handleMochiNativeAsk(
         : cards.filter((c) => ['text', 'note', 'title'].includes(c.type))
 
     if (targetTextCards.length > 0) {
-      const topic = lastFrame?.name?.replace(/\s*[—-].*$/, '') || snapshot.name || 'Creator App'
-      const copyPool = [
-        `${topic} · Live Feed`,
-        'Search creators, collections & reels…',
-        '@alex.studio · Featured Drop',
-        '3,420 likes · “Crafted for high-contrast dark mode workflows ✨”',
-        'Trending Creators & Stories',
-        '18 new updates from people you follow',
-        'Saved Collections & Moodboards',
-        'Synced across all your devices',
-        'Create New Post +',
-      ]
+      const topic = lastFrame?.name?.replace(/\s*[—-].*$/, '') || snapshot.name || 'App Concept'
+      const boardContext = `${lastFrame?.name || ''} ${snapshot.name || ''} ${(snapshot.recentChat || []).join(' ')} ${cards.map((c) => c.text || '').join(' ')}`.toLowerCase()
+
+      let copyPool: string[] = []
+      if (/\b(netflix|movie|movies|cinema|stream|streaming|tv show|series|film|hulu|disney|hbo|prime video|youtube)\b/i.test(boardContext)) {
+        copyPool = [
+          `${topic} · Originals & Movies`,
+          'Search titles, actors, genres…',
+          'Stranger Things 5 · Series Finale',
+          '98% Match · 2026 · 4K HDR · Hawkins final battle',
+          'Trending Movies & TV Shows',
+          'Top 10 in your country today',
+          'Continue Watching for Jerry',
+          'Resume where you left off',
+          '▶ Play Now',
+        ]
+      } else if (/\b(shop|store|ecommerce|e-commerce|cart|checkout|product|nike|shoe|fashion|delivery)\b/i.test(boardContext)) {
+        copyPool = [
+          `${topic} · Official Store`,
+          'Search products, drops & brands…',
+          'Aero Pro Limited Edition · $189.00',
+          'Responsive carbon foam cushioning · 4.9 ★ (420 reviews)',
+          'Curated New Arrivals',
+          'Free express shipping on all orders',
+          'Saved to Wishlist',
+          'Price drop alerts enabled',
+          'Add to Bag — $189 →',
+        ]
+      } else if (/\b(fitness|gym|workout|exercise|health|training|strava)\b/i.test(boardContext)) {
+        copyPool = [
+          `${topic} · Activity & Stats`,
+          'Search workouts, exercises, routines…',
+          'Upper Body Hypertrophy · Day 3',
+          '45 mins · 4 exercises · Bench Press & DB rows',
+          'Personal Records & Milestones',
+          'New PR: Bench Press 85 kg × 8 reps',
+          'Weekly Activity Streak',
+          '4 of 5 workouts completed this week',
+          'Start Workout Now ▶',
+        ]
+      } else if (/\b(crypto|wallet|bank|banking|finance|fintech|trading)\b/i.test(boardContext)) {
+        copyPool = [
+          `${topic} · Live Portfolio`,
+          'Search tokens, stocks, markets…',
+          'Total Balance: $48,920.40',
+          '+$1,842.10 (+3.92%) today · Outperforming benchmark',
+          'Top Market Movers',
+          'Bitcoin $91,420 · Solana $218.50',
+          'Recent Transactions',
+          'Instant SEPA transfer completed',
+          'Send / Swap Assets ⇄',
+        ]
+      } else if (/\b(wh?at?s?app|chat|messaging|messenger|telegram|slack|discord)\b/i.test(boardContext)) {
+        copyPool = [
+          `${topic} · Direct Messages`,
+          'Search chats, channels & media…',
+          'Design Team Sync · 4 online',
+          '“Just reviewed the new canvas prototypes ✨” · 2m ago',
+          'Direct Conversations',
+          'Alex: “Let’s review the interactive prototype”',
+          'Starred & Pinned Messages',
+          'Meeting links and sprint docs',
+          'New Message +',
+        ]
+      } else if (/\b(instagram|insta|social|creator|feed|stories|reel)\b/i.test(boardContext)) {
+        copyPool = [
+          `${topic} · Live Feed`,
+          'Search creators, collections & reels…',
+          '@alex.studio · Featured Drop',
+          '3,420 likes · “Crafted for high-contrast dark mode workflows ✨”',
+          'Trending Creators & Stories',
+          '18 new updates from people you follow',
+          'Saved Collections & Moodboards',
+          'Synced across all your devices',
+          'Create New Post +',
+        ]
+      } else {
+        copyPool = [
+          `${topic} · Overview`,
+          `Search in ${topic.toLowerCase()}…`,
+          `Featured ${topic} Highlight`,
+          `High-leverage insights and curated resources for ${topic}.`,
+          `Key Sections & Collections`,
+          'Updated just now with real-time sync',
+          'Pinned Favorites',
+          'Organized across all your workspaces',
+          `Launch ${topic} →`,
+        ]
+      }
+
       let k = 0
       const edit = targetTextCards
         .filter((c) => {
           const t = (c.text || '').trim()
-          return t.length > 2 && !/^(Home|Explore|Search|Post|Reels|Profile|Saved|Shop|Bag)$/i.test(t)
+          return (
+            t.length > 2 &&
+            !/^(Home|Explore|Search|Post|Reels|Profile|Saved|Shop|Bag|Library|New & Hot|My List|Downloads|Chats|Channels|Calls|Settings|Workouts|Progress)$/i.test(
+              t,
+            )
+          )
         })
         .map((c) => {
           const t = (c.text || '').trim()
           let replacement = copyPool[k % copyPool.length]
           if (/^(Untitled board|Title|App Screen|Explore)$/i.test(t)) replacement = topic
-          else if (/^Search/i.test(t)) replacement = `Search ${topic.toLowerCase()}…`
-          else if (/^(Button|Primary Action)$/i.test(t)) replacement = `Launch ${topic} →`
-          else k++
+          else if (/^Search/i.test(t)) replacement = copyPool[1] || `Search ${topic.toLowerCase()}…`
+          else if (/^(Button|Primary Action|Create New Post \+|▶ Play.*|Add to Bag.*|Start Workout.*)$/i.test(t) || (c.type === 'text' && c.w > 180 && c.h < 55)) {
+            replacement = copyPool[copyPool.length - 1] || `Launch ${topic} →`
+          } else {
+            k++
+          }
           return { id: c.id, text: replacement }
         })
 
@@ -953,7 +1523,20 @@ export async function handleMochiNativeAsk(
     const surface = makeDark ? '#181820' : '#f4f4f6'
     const textCol = makeDark ? '#f4f4f7' : '#18181b'
     const mutedCol = makeDark ? '#9ca3af' : '#71717a'
-    const accentCol = makeDark ? '#e1306c' : '#6366f1'
+
+    let accentCol = makeDark ? '#6366f1' : '#18181b'
+    if (/\b(purple|violet|lavender|indigo)\b/i.test(lower)) accentCol = '#9333ea'
+    else if (/\b(red|crimson|ruby)\b/i.test(lower)) accentCol = '#ef4444'
+    else if (/\b(pink|rose|magenta)\b/i.test(lower)) accentCol = '#e1306c'
+    else if (/\b(green|emerald|mint)\b/i.test(lower)) accentCol = '#10b981'
+    else if (/\b(blue|cyan|teal|sky)\b/i.test(lower)) accentCol = '#0ea5e9'
+    else if (/\b(orange|amber|gold|yellow)\b/i.test(lower)) accentCol = '#f59e0b'
+    else {
+      const existingBtn = childCards.find(
+        (c) => c.type === 'box' && c.h >= 42 && c.h <= 56 && c.fill && !['#ffffff', '#000000', '#18181b', '#27272a'].includes(c.fill),
+      )
+      if (existingBtn?.fill) accentCol = existingBtn.fill
+    }
 
     const edit: Array<Record<string, unknown>> = [{ id: targetFrame.id, fill: bg }]
     for (const c of childCards) {
@@ -1193,9 +1776,9 @@ export async function handleMochiNativeAsk(
   if (isScreenIntent) {
     const baseSpec = designDomainScreens(prompt, snapshot)
 
-    // Check if baseSpec is already a rich domain-specific screen (e.g. Instagram, WhatsApp, Calling, Spotify, Messages, etc.)
+    // Check if baseSpec is already a rich domain-specific screen (e.g. Netflix, Instagram, WhatsApp, Spotify, etc.)
     const isSpecialDomain =
-      /\b(instagram|insta|wh?at?s?app|wa|wapp|calling|calls?|spotify|music|tiktok|slack|discord|messages|store|cart|bank|crypto|login|signin|dashboard|analytics)\b/i.test(
+      /\b(netflix|stream|streaming|movie|movies|instagram|insta|wh?at?s?app|wa|wapp|calling|calls?|spotify|music|fitness|gym|workout|tiktok|slack|discord|messages|store|cart|bank|crypto|login|signin|dashboard|analytics)\b/i.test(
         lower,
       )
 
@@ -1203,12 +1786,18 @@ export async function handleMochiNativeAsk(
     if (!isSpecialDomain) {
       try {
         const topicName = extractScreenTopic(prompt, snapshot.name, snapshot.recentChat)
+        const existingFrames = (snapshot.cards || []).filter((c) => c.type === 'frame')
+        const previousContext =
+          existingFrames.length > 0
+            ? `\nExisting Screens on Canvas: ${existingFrames.map((f, i) => `#${i + 1}: "${f.name}"`).join(', ')}.\nThe user wants the NEXT logical screen in this user journey!`
+            : ''
+
         const llmRaw = await runTextPrompt(
-          `User request: "${prompt}"\nBoard context: "${snapshot.name}"\nDesign a UI screen in JSON.`,
+          `User request: "${prompt}"\nBoard context: "${snapshot.name}"${previousContext}\nDesign a UI screen in JSON.`,
           `Return ONLY valid JSON matching:
 {
-  "say": "Here is a custom wireframe for ${topicName} ✦",
-  "screenName": "${topicName} — Overview",
+  "say": "Here is Screen #${existingFrames.length + 1} for ${topicName} ✦",
+  "screenName": "${topicName} — Screen #${existingFrames.length + 1}",
   "navTitle": "${topicName}",
   "cardTitle": "Featured ${topicName} Spotlight",
   "cardText": "Key details and highlights for ${topicName}",
@@ -1219,7 +1808,7 @@ export async function handleMochiNativeAsk(
   "buttonText": "Explore ${topicName} →"
 }
 Tailor every field specifically to the user's request ("${prompt}"). DO NOT use generic words like "Featured Concept" or "Quick Action".`,
-          280,
+          340,
           0.3,
         )
         const a = llmRaw.indexOf('{')
@@ -1237,27 +1826,41 @@ Tailor every field specifically to the user's request ("${prompt}"). DO NOT use 
             s.includes('Follow-up suggestion')
 
           if (parsed && firstScreen && firstScreen.device === 'iPhone' && baseSpec.screens.length === 1) {
-            if (!isDummy(parsed.screenName)) firstScreen.name = String(parsed.screenName)
-            if (!isDummy(parsed.say)) baseSpec.say = String(parsed.say).endsWith('✦') ? parsed.say : `${parsed.say} ✦`
-            for (const item of firstScreen.items as Array<Record<string, unknown>>) {
-              if (item.piece === 'Nav bar' && !isDummy(parsed.navTitle)) item.title = String(parsed.navTitle)
-              if (item.piece === 'Card' && !isDummy(parsed.cardTitle)) {
-                item.title = String(parsed.cardTitle)
-                if (!isDummy(parsed.cardText)) item.text = String(parsed.cardText)
-                break
+            // If the model produced a full custom items array, validate and use it!
+            if (Array.isArray(parsed.items) && parsed.items.length >= 3) {
+              const validPieces = ['nav bar', 'heading', 'search', 'card', 'button', 'list row', 'tab bar', 'input', 'avatar', 'image', 'toggle', 'checkbox', 'divider']
+              const cleanItems = (parsed.items as Array<Record<string, unknown>>).filter(
+                (it) => it && typeof it === 'object' && validPieces.includes(String(it.piece || '').toLowerCase()),
+              )
+              if (cleanItems.length >= 3) {
+                firstScreen.items = cleanItems as unknown as typeof firstScreen.items
+                if (!isDummy(parsed.screenName)) firstScreen.name = String(parsed.screenName)
+                if (!isDummy(parsed.say)) baseSpec.say = String(parsed.say).endsWith('✦') ? parsed.say : `${parsed.say} ✦`
               }
+            } else {
+              // Field-level replacement fallback
+              if (!isDummy(parsed.screenName)) firstScreen.name = String(parsed.screenName)
+              if (!isDummy(parsed.say)) baseSpec.say = String(parsed.say).endsWith('✦') ? parsed.say : `${parsed.say} ✦`
+              for (const item of firstScreen.items as Array<Record<string, unknown>>) {
+                if (item.piece === 'Nav bar' && !isDummy(parsed.navTitle)) item.title = String(parsed.navTitle)
+                if (item.piece === 'Card' && !isDummy(parsed.cardTitle)) {
+                  item.title = String(parsed.cardTitle)
+                  if (!isDummy(parsed.cardText)) item.text = String(parsed.cardText)
+                  break
+                }
+              }
+              const rows = (firstScreen.items as Array<Record<string, unknown>>).filter((i) => i.piece === 'List row')
+              if (rows[0] && !isDummy(parsed.row1Title)) {
+                rows[0].title = String(parsed.row1Title)
+                if (!isDummy(parsed.row1Sub)) rows[0].sub = String(parsed.row1Sub)
+              }
+              if (rows[1] && !isDummy(parsed.row2Title)) {
+                rows[1].title = String(parsed.row2Title)
+                if (!isDummy(parsed.row2Sub)) rows[1].sub = String(parsed.row2Sub)
+              }
+              const btn = (firstScreen.items as Array<Record<string, unknown>>).find((i) => i.piece === 'Button')
+              if (btn && !isDummy(parsed.buttonText)) btn.text = String(parsed.buttonText)
             }
-            const rows = (firstScreen.items as Array<Record<string, unknown>>).filter((i) => i.piece === 'List row')
-            if (rows[0] && !isDummy(parsed.row1Title)) {
-              rows[0].title = String(parsed.row1Title)
-              if (!isDummy(parsed.row1Sub)) rows[0].sub = String(parsed.row1Sub)
-            }
-            if (rows[1] && !isDummy(parsed.row2Title)) {
-              rows[1].title = String(parsed.row2Title)
-              if (!isDummy(parsed.row2Sub)) rows[1].sub = String(parsed.row2Sub)
-            }
-            const btn = (firstScreen.items as Array<Record<string, unknown>>).find((i) => i.piece === 'Button')
-            if (btn && !isDummy(parsed.buttonText)) btn.text = String(parsed.buttonText)
           }
         }
       } catch {

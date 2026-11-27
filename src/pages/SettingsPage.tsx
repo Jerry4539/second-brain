@@ -700,12 +700,12 @@ export function SettingsPage() {
       <div className="flex items-center gap-1.5 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)]/80 p-1.5 backdrop-blur-md">
         {(
           [
-            { id: 'all', label: 'All Bento Cards', icon: LayoutGrid },
-            { id: 'profile', label: 'Profile & Mascot Studio', icon: User },
-            { id: 'canvas', label: 'Canvas Settings', icon: Palette },
-            { id: 'ai_image', label: 'Image Rendering & Models', icon: ImageIcon },
-            { id: 'knowledge', label: 'Knowledge & Web APIs', icon: Globe },
-            { id: 'system', label: 'Memory, RLHF & Hardware', icon: Cpu },
+            { id: 'all', label: 'All Bento', icon: LayoutGrid },
+            { id: 'profile', label: 'Profile & Mascot', icon: User },
+            { id: 'canvas', label: 'Canvas', icon: Palette },
+            { id: 'ai_image', label: 'Image & Models', icon: ImageIcon },
+            { id: 'knowledge', label: 'Knowledge & Web', icon: Globe },
+            { id: 'system', label: 'System & Brain', icon: Cpu },
           ] as const
         ).map((tab) => {
           const Icon = tab.icon
