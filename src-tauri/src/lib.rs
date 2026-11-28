@@ -154,6 +154,7 @@ pub fn run() {
       commands::scan_image_model_folder,
       commands::read_text_attachment,
       commands::agent_fetch_url,
+      commands::synthesize_speech_edge,
       commands::agent_save_workspace_note,
       download::download_model,
       download::cancel_model_download,

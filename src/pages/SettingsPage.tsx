@@ -21,14 +21,19 @@ import {
   Palette,
   Plus,
   Power,
+  Play,
+  RotateCcw,
   Search,
   Sliders,
   Sparkles,
+  Square,
   Trash2,
   Trophy,
   User,
+  Volume2,
   Zap,
 } from 'lucide-react'
+import { CURATED_VOICES, TTS_DEFAULTS, verbaTTS } from '../lib/tts/verbaIndic'
 import { PageHeader } from '../components/layout/PageHeader'
 import { ThemeToggle } from '../components/layout/ThemeToggle'
 import { Input } from '../components/ui/Input'
@@ -142,7 +147,7 @@ function ToggleSwitch({
 }
 
 type DbStatus = 'checking' | 'connected' | 'error'
-type SettingsCategory = 'all' | 'profile' | 'canvas' | 'ai_image' | 'knowledge' | 'system'
+type SettingsCategory = 'all' | 'profile' | 'canvas' | 'ai_image' | 'voice' | 'knowledge' | 'system'
 
 const STEP_PRESETS = [4, 5, 6, 7, 8, 10, 12, 16, 20] as const
 const RESOLUTION_PRESETS = [
@@ -377,7 +382,7 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = searchParams.get('tab') as SettingsCategory | null
   const [activeCategory, setActiveCategoryState] = useState<SettingsCategory>(() => {
-    if (initialTab && ['all', 'profile', 'canvas', 'ai_image', 'knowledge', 'system'].includes(initialTab)) {
+    if (initialTab && ['all', 'profile', 'canvas', 'ai_image', 'voice', 'knowledge', 'system'].includes(initialTab)) {
       return initialTab
     }
     return 'all'
@@ -401,6 +406,16 @@ export function SettingsPage() {
   const [specs, setSpecs] = useState<SystemSpecs | null>(null)
   const [textStatus, setTextStatus] = useState<EngineStatus | null>(null)
   const [imgStatus, setImgStatus] = useState<ImageEngineStatus | null>(null)
+
+  // Voice & Speech Engine Settings (Verba Indic)
+  const [ttsDefaultVoice, setTtsDefaultVoice] = useState<string>(TTS_DEFAULTS.defaultVoice)
+  const [ttsSpeed, setTtsSpeed] = useState<string>(TTS_DEFAULTS.speed)
+  const [ttsPitchHz, setTtsPitchHz] = useState<number>(0)
+  const [ttsPauseMs, setTtsPauseMs] = useState<number>(TTS_DEFAULTS.turnPauseMs)
+  const [ttsSentencePauseMs, setTtsSentencePauseMs] = useState<number>(TTS_DEFAULTS.sentencePauseMs)
+  const [ttsVerbal, setTtsVerbal] = useState<boolean>(TTS_DEFAULTS.verbalIndicators)
+  const [ttsAutoDetectLang, setTtsAutoDetectLang] = useState<boolean>(TTS_DEFAULTS.autoDetectLang)
+  const [testingVoiceId, setTestingVoiceId] = useState<string | null>(null)
 
   // Image Generation & Rendering Engine Settings
   const [imgSteps, setImgSteps] = useState<number>(6)
@@ -453,6 +468,13 @@ export function SettingsPage() {
           storedSampler,
           storedNegGuard,
           storedFlashAttn,
+          storedVoice,
+          storedSpeed,
+          storedPitch,
+          storedPauseMs,
+          storedSentencePauseMs,
+          storedVerbal,
+          storedAutoDetectLang,
           importedText,
           importedImage,
           sysSpecs,
@@ -468,6 +490,13 @@ export function SettingsPage() {
           getSetting('image_gen_sampler'),
           getSetting('image_gen_neg_guard'),
           getSetting('image_gen_flash_attn'),
+          getSetting('tts_default_voice'),
+          getSetting('tts_speed'),
+          getSetting('tts_pitch'),
+          getSetting('tts_pause_ms'),
+          getSetting('tts_sentence_pause_ms'),
+          getSetting('tts_verbal_indicators'),
+          getSetting('tts_auto_detect_lang'),
           listModels('text'),
           listModels('image'),
           getSystemSpecs(),
@@ -486,6 +515,19 @@ export function SettingsPage() {
         if (storedSampler) setImgSampler(storedSampler)
         if (storedNegGuard !== null) setImgNegGuard(storedNegGuard !== 'false')
         if (storedFlashAttn !== null) setImgFlashAttn(storedFlashAttn !== 'false')
+        if (storedVoice) setTtsDefaultVoice(storedVoice)
+        if (storedSpeed) setTtsSpeed(storedSpeed)
+        if (storedPitch !== null && !isNaN(Number(storedPitch))) {
+          setTtsPitchHz(Math.max(-15, Math.min(15, Number(storedPitch))))
+        }
+        if (storedPauseMs !== null && !isNaN(Number(storedPauseMs))) {
+          setTtsPauseMs(Math.max(40, Math.min(1000, Number(storedPauseMs))))
+        }
+        if (storedSentencePauseMs !== null && !isNaN(Number(storedSentencePauseMs))) {
+          setTtsSentencePauseMs(Math.max(20, Math.min(400, Number(storedSentencePauseMs))))
+        }
+        if (storedVerbal !== null) setTtsVerbal(storedVerbal !== 'false')
+        if (storedAutoDetectLang !== null) setTtsAutoDetectLang(storedAutoDetectLang !== 'false')
 
         // Sync Canvas localStorage preferences
         try {
@@ -674,6 +716,114 @@ export function SettingsPage() {
     showToast('Assistant name saved', 'success')
   }
 
+  async function handleSelectDefaultVoice(voiceId: string) {
+    setTtsDefaultVoice(voiceId)
+    await setSetting('tts_default_voice', voiceId)
+    const voice = CURATED_VOICES.find((v) => v.id === voiceId)
+    showToast(`Default voice set to ${voice?.name || voiceId}`, 'success')
+  }
+
+  async function handleSelectTtsSpeed(speed: string) {
+    setTtsSpeed(speed)
+    await setSetting('tts_speed', speed)
+    showToast(`Voice speed set to ${speed}x`, 'info')
+  }
+
+  async function handleSelectTtsPitch(hz: number) {
+    const clamped = Math.max(-15, Math.min(15, hz))
+    setTtsPitchHz(clamped)
+    await setSetting('tts_pitch', String(clamped))
+    showToast(`Voice pitch set to ${clamped >= 0 ? `+${clamped}` : clamped}Hz`, 'info')
+  }
+
+  async function handleSelectTtsPauseMs(ms: number) {
+    const clamped = Math.max(40, Math.min(1000, Math.round(ms)))
+    setTtsPauseMs(clamped)
+    await setSetting('tts_pause_ms', String(clamped))
+    showToast(`Default dialogue turn pause set to ${clamped}ms`, 'info')
+  }
+
+  async function handleSelectTtsSentencePauseMs(ms: number) {
+    const clamped = Math.max(20, Math.min(400, Math.round(ms)))
+    setTtsSentencePauseMs(clamped)
+    await setSetting('tts_sentence_pause_ms', String(clamped))
+    showToast(`Sentence breath pause set to ${clamped}ms`, 'info')
+  }
+
+  async function handleToggleTtsVerbal(checked: boolean) {
+    setTtsVerbal(checked)
+    await setSetting('tts_verbal_indicators', String(checked))
+    showToast(checked ? 'Verbal code indicators enabled' : 'Verbal code indicators disabled', 'info')
+  }
+
+  async function handleToggleTtsAutoDetect(checked: boolean) {
+    setTtsAutoDetectLang(checked)
+    await setSetting('tts_auto_detect_lang', String(checked))
+    showToast(
+      checked ? 'Auto language detection enabled' : 'Auto language detection disabled',
+      'info',
+    )
+  }
+
+  async function handleResetTtsDefaults() {
+    verbaTTS.stop()
+    setTestingVoiceId(null)
+    setTtsDefaultVoice(TTS_DEFAULTS.defaultVoice)
+    setTtsSpeed(TTS_DEFAULTS.speed)
+    setTtsPitchHz(0)
+    setTtsPauseMs(TTS_DEFAULTS.turnPauseMs)
+    setTtsSentencePauseMs(TTS_DEFAULTS.sentencePauseMs)
+    setTtsVerbal(TTS_DEFAULTS.verbalIndicators)
+    setTtsAutoDetectLang(TTS_DEFAULTS.autoDetectLang)
+
+    await Promise.all([
+      setSetting('tts_default_voice', TTS_DEFAULTS.defaultVoice),
+      setSetting('tts_speed', TTS_DEFAULTS.speed),
+      setSetting('tts_pitch', '0'),
+      setSetting('tts_pause_ms', String(TTS_DEFAULTS.turnPauseMs)),
+      setSetting('tts_sentence_pause_ms', String(TTS_DEFAULTS.sentencePauseMs)),
+      setSetting('tts_verbal_indicators', String(TTS_DEFAULTS.verbalIndicators)),
+      setSetting('tts_auto_detect_lang', String(TTS_DEFAULTS.autoDetectLang)),
+    ])
+    showToast('Voice & Speech settings reset to factory defaults (180ms pause, Swara 1.0x)', 'success')
+  }
+
+  async function handleTestVoice(voiceId: string) {
+    if (testingVoiceId === voiceId) {
+      verbaTTS.stop()
+      setTestingVoiceId(null)
+      return
+    }
+
+    verbaTTS.stop()
+    setTestingVoiceId(voiceId)
+
+    const voice = CURATED_VOICES.find((v) => v.id === voiceId)
+    const isHindi = voice?.lang === 'hi-IN'
+    const testText = isHindi
+      ? 'Namaste! Main Second Brain hoon. Aapke har workflow, research aur coding mein madad karne ke liye poori tarah tayar hoon.'
+      : 'Hello! I am your Second Brain assistant, ready to help you with architecture, code, and creative ideas.'
+
+    try {
+      const speed = parseFloat(ttsSpeed) || 1.0
+      await verbaTTS.speak(
+        testText,
+        voiceId,
+        speed,
+        () => {
+          setTestingVoiceId((cur) => (cur === voiceId ? null : cur))
+        },
+        {
+          pitchHz: ttsPitchHz,
+          sentencePauseMs: ttsSentencePauseMs,
+          verbalIndicator: ttsVerbal,
+        },
+      )
+    } catch {
+      setTestingVoiceId(null)
+    }
+  }
+
   const nextLevelXp = policy.level * 100
   const levelProgressPct = Math.min(100, Math.round(((policy.totalXp % 100) / 100) * 100))
 
@@ -704,6 +854,7 @@ export function SettingsPage() {
             { id: 'profile', label: 'Profile & Mascot', icon: User },
             { id: 'canvas', label: 'Canvas', icon: Palette },
             { id: 'ai_image', label: 'Image & Models', icon: ImageIcon },
+            { id: 'voice', label: 'Voice & Speech', icon: Volume2 },
             { id: 'knowledge', label: 'Knowledge & Web', icon: Globe },
             { id: 'system', label: 'System & Brain', icon: Cpu },
           ] as const
@@ -1516,6 +1667,293 @@ export function SettingsPage() {
                       </div>
                     )
                   })}
+                </div>
+              </div>
+            </div>
+          </BentoCard>
+        )}
+
+        {/* ----------------------------------------------------------------- */}
+        {/* BENTO: VOICE & SPEECH ENGINE (12 cols)                            */}
+        {/* ----------------------------------------------------------------- */}
+        {showSection('voice') && (
+          <BentoCard
+            className={activeCategory === 'voice' ? 'col-span-12' : 'col-span-12 lg:col-span-12'}
+            title="Voice & Speech Engine (Verba Indic)"
+            subtitle="Customize default neural voice, dialogue turn pause (180ms default), sentence breath cadence, pitch tone, and verbal code indicators."
+            icon={Volume2}
+            badge={
+              <div className="flex items-center gap-2">
+                <Badge tone="success">
+                  {ttsPauseMs}ms Turn Pause • {ttsSpeed}x
+                </Badge>
+                <button
+                  type="button"
+                  onClick={handleResetTtsDefaults}
+                  title="Reset all Voice & Speech settings to defaults"
+                  className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--text)]"
+                >
+                  <RotateCcw size={12} />
+                  <span>Reset Defaults</span>
+                </button>
+              </div>
+            }
+          >
+            <div className="space-y-4">
+              {/* Curated Voice Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {CURATED_VOICES.map((v) => {
+                  const isSelected = ttsDefaultVoice === v.id
+                  const isTesting = testingVoiceId === v.id
+                  return (
+                    <div
+                      key={v.id}
+                      onClick={() => handleSelectDefaultVoice(v.id)}
+                      className={`relative flex flex-col justify-between rounded-2xl border p-4 cursor-pointer transition-all duration-200 ${
+                        isSelected
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 shadow-sm ring-1 ring-[var(--accent)]/30'
+                          : 'border-[var(--border)] bg-[var(--surface-elevated)]/50 hover:border-[var(--accent)]/40 hover:bg-[var(--surface-elevated)]'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-2xl">{v.avatar}</span>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="text-sm font-bold text-[var(--text)]">{v.name}</h3>
+                                <span className="rounded-full bg-[var(--surface)] px-1.5 py-0.2 text-[10px] font-medium text-[var(--muted)] border border-[var(--border)]">
+                                  {v.gender}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-medium text-[var(--accent)]">
+                                {v.accent}
+                              </span>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <span className="flex items-center gap-1 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold text-white">
+                              <Check size={11} /> Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[var(--muted)] leading-relaxed mt-1">{v.description}</p>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between border-t border-[var(--border)]/60 pt-2.5">
+                        <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--muted)]">
+                          {v.tag}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleTestVoice(v.id)
+                          }}
+                          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
+                            isTesting
+                              ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                              : 'bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] hover:border-[var(--accent)]'
+                          }`}
+                        >
+                          {isTesting ? <Square size={12} className="fill-current" /> : <Play size={12} className="fill-current" />}
+                          <span>{isTesting ? 'Stop' : 'Listen'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Row 2: Custom Dialogue Turn Pause & Sentence Breath Delay */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {/* Custom Dialogue Turn Pause (ms) */}
+                <div className="flex flex-col justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/45 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-[var(--text)]">
+                          Default Dialogue Turn Pause
+                        </span>
+                        <span className="rounded-md bg-[var(--accent)]/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--accent)]">
+                          {ttsPauseMs}ms
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--muted)] mt-0.5">
+                        Gap between speakers in Auto-Direct & multi-turn dialogue (180ms is natural human cadence)
+                      </p>
+                    </div>
+                    <input
+                      type="number"
+                      min={40}
+                      max={1000}
+                      step={10}
+                      value={ttsPauseMs}
+                      onChange={(e) => {
+                        const val = Number(e.target.value)
+                        if (!isNaN(val)) handleSelectTtsPauseMs(val)
+                      }}
+                      className="w-20 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-right font-mono text-xs font-bold text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <input
+                      type="range"
+                      min={40}
+                      max={600}
+                      step={10}
+                      value={Math.min(600, ttsPauseMs)}
+                      onChange={(e) => handleSelectTtsPauseMs(Number(e.target.value))}
+                      className="h-1.5 w-full cursor-pointer accent-[var(--accent)]"
+                    />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[
+                        { ms: 100, label: '100ms Snappy' },
+                        { ms: 180, label: '180ms Natural (Default)' },
+                        { ms: 260, label: '260ms Balanced' },
+                        { ms: 400, label: '400ms Dramatic' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.ms}
+                          type="button"
+                          onClick={() => handleSelectTtsPauseMs(preset.ms)}
+                          className={`rounded-xl px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                            ttsPauseMs === preset.ms
+                              ? 'bg-[var(--accent)] text-white shadow-xs'
+                              : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sentence Breath Pause & Pitch Control */}
+                <div className="flex flex-col justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/45 p-4">
+                  {/* Sentence Breath Pause */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)]/60 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-[var(--text)]">
+                          Sentence Breath Delay
+                        </span>
+                        <span className="rounded-md bg-[var(--surface)] border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--muted)]">
+                          {ttsSentencePauseMs}ms
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--muted)] mt-0.5">
+                        Micro-pause between sentences in long paragraphs
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {[
+                        { ms: 30, label: '30ms' },
+                        { ms: 60, label: '60ms Default' },
+                        { ms: 120, label: '120ms' },
+                        { ms: 200, label: '200ms' },
+                      ].map((p) => (
+                        <button
+                          key={p.ms}
+                          type="button"
+                          onClick={() => handleSelectTtsSentencePauseMs(p.ms)}
+                          className={`rounded-xl px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                            ttsSentencePauseMs === p.ms
+                              ? 'bg-[var(--accent)] text-white shadow-xs'
+                              : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Voice Pitch / Tone Offset */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-0.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-[var(--text)]">
+                          Vocal Pitch & Tone
+                        </span>
+                        <span className="rounded-md bg-[var(--surface)] border border-[var(--border)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--muted)]">
+                          {ttsPitchHz >= 0 ? `+${ttsPitchHz}Hz` : `${ttsPitchHz}Hz`}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[var(--muted)] mt-0.5">
+                        Subtle vocal warmth or brightness adjustment
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {[
+                        { hz: -6, label: '-6Hz Deep' },
+                        { hz: 0, label: '0Hz Natural' },
+                        { hz: 4, label: '+4Hz Warm' },
+                        { hz: 8, label: '+8Hz Bright' },
+                      ].map((p) => (
+                        <button
+                          key={p.hz}
+                          type="button"
+                          onClick={() => handleSelectTtsPitch(p.hz)}
+                          className={`rounded-xl px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                            ttsPitchHz === p.hz
+                              ? 'bg-[var(--accent)] text-white shadow-xs'
+                              : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Speed, Auto-Detect Language & Verbal Indicator Controls */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="flex flex-col justify-between gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/40 p-3.5">
+                  <div>
+                    <div className="text-xs font-semibold text-[var(--text)]">Speech Speed</div>
+                    <div className="text-[11px] text-[var(--muted)]">Natural cadence multiplier</div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {['0.85', '1.0', '1.15', '1.25'].map((spd) => (
+                      <button
+                        key={spd}
+                        type="button"
+                        onClick={() => handleSelectTtsSpeed(spd)}
+                        className={`rounded-xl px-2.5 py-1 text-xs font-semibold transition-all ${
+                          ttsSpeed === spd
+                            ? 'bg-[var(--accent)] text-white shadow-xs'
+                            : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'
+                        }`}
+                      >
+                        {spd === '1.0' ? '1.0x Normal' : `${spd}x`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/40 p-3.5">
+                  <div>
+                    <div className="text-xs font-semibold text-[var(--text)]">Auto-Language Switch</div>
+                    <div className="text-[11px] text-[var(--muted)]">
+                      Automatically adapts voice when Hindi/Devanagari script is detected
+                    </div>
+                  </div>
+                  <ToggleSwitch checked={ttsAutoDetectLang} onChange={handleToggleTtsAutoDetect} />
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)]/40 p-3.5">
+                  <div>
+                    <div className="text-xs font-semibold text-[var(--text)]">Verbal Code Indicators</div>
+                    <div className="text-[11px] text-[var(--muted)]">
+                      Speaks "Here is the Swift code snippet" instead of raw symbols
+                    </div>
+                  </div>
+                  <ToggleSwitch checked={ttsVerbal} onChange={handleToggleTtsVerbal} />
                 </div>
               </div>
             </div>

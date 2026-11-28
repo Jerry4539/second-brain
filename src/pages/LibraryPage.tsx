@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   MessageSquare,
   ImageIcon,
-  Gamepad2,
   Blocks,
   Search,
   Trash2,
@@ -11,7 +10,6 @@ import {
   Copy,
   Calendar,
   Layers,
-  Trophy,
 } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { PageHeader } from '../components/layout/PageHeader'
@@ -30,11 +28,9 @@ import {
   type ConversationRecord,
   type ImageRecord,
   type AddonRecord,
-  type GameRecord,
 } from '../lib/db'
-import { listRecentGames } from '../lib/games/db'
 
-type LibraryTab = 'all' | 'conversations' | 'images' | 'games' | 'addons'
+type LibraryTab = 'all' | 'conversations' | 'images' | 'addons'
 
 export function LibraryPage() {
   const navigate = useNavigate()
@@ -47,7 +43,6 @@ export function LibraryPage() {
   // Data collections
   const [conversations, setConversations] = useState<ConversationRecord[]>([])
   const [images, setImages] = useState<ImageRecord[]>([])
-  const [games, setGames] = useState<GameRecord[]>([])
   const [addons, setAddons] = useState<AddonRecord[]>([])
   const [imageThumbnails, setImageThumbnails] = useState<Record<string, string>>({})
 
@@ -68,16 +63,14 @@ export function LibraryPage() {
   async function loadLibraryData() {
     try {
       setLoading(true)
-      const [convList, imgList, gameList, addonList] = await Promise.all([
+      const [convList, imgList, addonList] = await Promise.all([
         listConversations().catch(() => []),
         listImages(100).catch(() => []),
-        listRecentGames(undefined, 100).catch(() => []),
         listAddons().catch(() => []),
       ])
 
       setConversations(convList)
       setImages(imgList)
-      setGames(gameList)
       setAddons(addonList)
 
       // Fetch thumbnails for images asynchronously
@@ -140,16 +133,6 @@ export function LibraryPage() {
     )
   }, [images, q])
 
-  const filteredGames = useMemo(() => {
-    if (!q) return games
-    return games.filter(
-      (g) =>
-        g.game_type.toLowerCase().includes(q) ||
-        (g.result && g.result.toLowerCase().includes(q)) ||
-        g.difficulty.toLowerCase().includes(q),
-    )
-  }, [games, q])
-
   const filteredAddons = useMemo(() => {
     if (!q) return addons
     return addons.filter(
@@ -160,14 +143,12 @@ export function LibraryPage() {
   const totalFilteredCount =
     filteredConversations.length +
     filteredImages.length +
-    filteredGames.length +
     filteredAddons.length
 
   const tabsConfig = [
-    { id: 'all' as const, label: 'All', count: conversations.length + images.length + games.length + addons.length },
+    { id: 'all' as const, label: 'All', count: conversations.length + images.length + addons.length },
     { id: 'conversations' as const, label: 'Chats', count: conversations.length, icon: MessageSquare },
     { id: 'images' as const, label: 'Images', count: images.length, icon: ImageIcon },
-    { id: 'games' as const, label: 'Games', count: games.length, icon: Gamepad2 },
     { id: 'addons' as const, label: 'Add-ons', count: addons.length, icon: Blocks },
   ]
 
@@ -375,76 +356,7 @@ export function LibraryPage() {
             </div>
           )}
 
-          {/* 3. Game Matches Section */}
-          {(activeTab === 'all' || activeTab === 'games') && filteredGames.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Gamepad2 size={16} className="text-emerald-500" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                  Game History ({filteredGames.length})
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredGames.map((game) => {
-                  const isWin = game.result === 'win'
-                  const isLoss = game.result === 'loss'
-                  const gameName = game.game_type === 'ludo' ? 'Ludo Arena' : 'Tic-Tac-Toe'
-
-                  return (
-                    <div
-                      key={game.id}
-                      className="flex items-center justify-between p-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold text-sm ${
-                            isWin
-                              ? 'bg-emerald-500/10 text-emerald-500'
-                              : isLoss
-                                ? 'bg-amber-500/10 text-amber-500'
-                                : 'bg-blue-500/10 text-blue-500'
-                          }`}
-                        >
-                          <Trophy size={18} />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-xs text-[var(--text)]">{gameName}</h4>
-                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-[var(--muted)]">
-                            <span className="capitalize">Mode: {game.difficulty}</span>
-                            <span>•</span>
-                            <span>{new Date(game.created_at).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded-lg px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
-                            isWin
-                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                              : isLoss
-                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                                : 'bg-[var(--surface-muted)] text-[var(--muted)]'
-                          }`}
-                        >
-                          {game.result || 'Draw'}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          className="px-2 py-1 text-xs"
-                          onClick={() => navigate('/play')}
-                        >
-                          Play
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 4. Add-ons Section */}
+          {/* 3. Add-ons Section */}
           {(activeTab === 'all' || activeTab === 'addons') && filteredAddons.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-3">

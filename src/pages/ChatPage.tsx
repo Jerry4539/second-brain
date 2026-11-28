@@ -48,6 +48,7 @@ import { LoadingState } from '../components/ui/LoadingState'
 import { EmptyState } from '../components/ui/EmptyState'
 import { type ArtifactPayload } from '../components/chat/MarkdownContent'
 import { ChatImageCard } from '../components/chat/ChatImageCard'
+import { verbaTTS, cleanSpeechText } from '../lib/tts/verbaIndic'
 import { ClaudeResponseView } from '../components/chat/ClaudeResponseView'
 import { ArtifactSidePanel } from '../components/chat/ArtifactSidePanel'
 import {
@@ -571,9 +572,7 @@ export function ChatPage() {
     loadAgentPolicy().then(setAgentPolicy).catch(() => {})
 
     return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-      }
+      verbaTTS.stop()
     }
   }, [])
 
@@ -1375,25 +1374,59 @@ export function ChatPage() {
     showToast('Exported as Markdown', 'success')
   }
 
-  function handleToggleSpeak(msgId: string, text: string) {
-    if (!('speechSynthesis' in window)) {
-      showToast('Speech synthesis is not supported on this system', 'warning')
-      return
-    }
+  async function handleToggleSpeak(msgId: string, text: string) {
     if (speakingId === msgId) {
-      window.speechSynthesis.cancel()
+      verbaTTS.stop()
       setSpeakingId(null)
       return
     }
-    window.speechSynthesis.cancel()
-    const cleanSpeech = text
-      .replace(/```[\s\S]*?```/g, ' Code block. ')
-      .replace(/[*#_`~>-]/g, '')
-    const utterance = new SpeechSynthesisUtterance(cleanSpeech)
-    utterance.onend = () => setSpeakingId(null)
-    utterance.onerror = () => setSpeakingId(null)
-    setSpeakingId(msgId)
-    window.speechSynthesis.speak(utterance)
+    verbaTTS.stop()
+
+    try {
+      const [
+        savedVoice,
+        savedSpeed,
+        savedPitch,
+        savedSentencePause,
+        savedVerbal,
+        savedAutoDetect,
+      ] = await Promise.all([
+        getSetting('tts_default_voice'),
+        getSetting('tts_speed'),
+        getSetting('tts_pitch'),
+        getSetting('tts_sentence_pause_ms'),
+        getSetting('tts_verbal_indicators'),
+        getSetting('tts_auto_detect_lang'),
+      ])
+
+      const useVerbal = savedVerbal !== 'false'
+      const cleanSpeech = cleanSpeechText(text, { verbalIndicator: useVerbal })
+      if (!cleanSpeech) return
+
+      setSpeakingId(msgId)
+
+      let voiceToUse = savedVoice || 'hi-IN-SwaraNeural'
+      const autoDetect = savedAutoDetect !== 'false'
+      if (autoDetect && /[\u0900-\u097F]/.test(cleanSpeech) && voiceToUse.startsWith('en-')) {
+        voiceToUse = voiceToUse.includes('Prabhat') ? 'hi-IN-MadhurNeural' : 'hi-IN-SwaraNeural'
+      }
+
+      const speed = parseFloat(savedSpeed || '1.0') || 1.0
+      const pitchHz = parseInt(savedPitch || '0', 10) || 0
+      const sentencePauseMs = parseInt(savedSentencePause || '60', 10) || 60
+
+      await verbaTTS.speak(
+        cleanSpeech,
+        voiceToUse,
+        speed,
+        () => {
+          setSpeakingId((cur) => (cur === msgId ? null : cur))
+        },
+        { pitchHz, sentencePauseMs, verbalIndicator: useVerbal },
+      )
+    } catch {
+      setSpeakingId(null)
+    }
   }
 
   function handleCopy(id: string, content: string) {

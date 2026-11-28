@@ -1,5 +1,5 @@
 import {
-  Gamepad2,
+  AudioLines,
   Home,
   ImagePlus,
   MessageSquare,
@@ -20,7 +20,7 @@ export const navItems: NavItem[] = [
   { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/create', label: 'Create', icon: ImagePlus },
   { to: '/canvas', label: 'Canvas', icon: Palette },
-  { to: '/play', label: 'Play', icon: Gamepad2 },
+  { to: '/voice', label: 'Voice', icon: AudioLines },
   { to: '/models', label: 'Models', icon: Cpu },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

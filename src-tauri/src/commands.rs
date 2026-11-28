@@ -175,6 +175,89 @@ pub async fn agent_fetch_url(
 }
 
 #[tauri::command]
+pub async fn synthesize_speech_edge(
+  text: String,
+  voice: Option<String>,
+  rate: Option<String>,
+  pitch: Option<String>,
+) -> Result<Vec<u8>, String> {
+  let selected_voice = voice.unwrap_or_else(|| "hi-IN-SwaraNeural".to_string());
+  let selected_rate = rate.unwrap_or_else(|| "+0%".to_string());
+  let selected_pitch = pitch.unwrap_or_else(|| "+0Hz".to_string());
+
+  let temp_dir = std::env::temp_dir();
+  let id = uuid::Uuid::new_v4();
+  let input_path = temp_dir.join(format!("sb_tts_in_{}.txt", id));
+  let output_path = temp_dir.join(format!("sb_tts_out_{}.mp3", id));
+
+  tokio::fs::write(&input_path, text.as_bytes())
+    .await
+    .map_err(|e| format!("failed to write temp input: {e}"))?;
+
+  let python_candidates = ["python3", "python", "py"];
+  let mut last_err = String::new();
+  let mut success = false;
+
+  for py in &python_candidates {
+    let mut cmd = tokio::process::Command::new(py);
+    cmd.args([
+      "-m",
+      "edge_tts",
+      "-f",
+      input_path.to_str().unwrap_or_default(),
+      "--write-media",
+      output_path.to_str().unwrap_or_default(),
+      "-v",
+      &selected_voice,
+      "--rate",
+      &selected_rate,
+      "--pitch",
+      &selected_pitch,
+    ]);
+
+    #[cfg(target_os = "windows")]
+    {
+      #[allow(unused_imports)]
+      use std::os::windows::process::CommandExt;
+      cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    match cmd.output().await {
+      Ok(out) => {
+        if out.status.success() && output_path.exists() {
+          success = true;
+          break;
+        } else {
+          last_err = String::from_utf8_lossy(&out.stderr).to_string();
+        }
+      }
+      Err(e) => {
+        last_err = format!("could not spawn {py}: {e}");
+      }
+    }
+  }
+
+  let _ = tokio::fs::remove_file(&input_path).await;
+
+  if !success || !output_path.exists() {
+    let _ = tokio::fs::remove_file(&output_path).await;
+    return Err(format!("Edge TTS failed: {last_err}"));
+  }
+
+  let bytes = tokio::fs::read(&output_path)
+    .await
+    .map_err(|e| format!("failed to read generated audio: {e}"))?;
+
+  let _ = tokio::fs::remove_file(&output_path).await;
+
+  if bytes.is_empty() {
+    return Err("Edge TTS returned empty audio".to_string());
+  }
+
+  Ok(bytes)
+}
+
+#[tauri::command]
 pub fn agent_save_workspace_note(
   app: tauri::AppHandle,
   filename: String,

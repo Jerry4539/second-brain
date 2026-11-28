@@ -1,4 +1,4 @@
-﻿# Downloads the official Microsoft ONNX Runtime Windows x64 CPU-only prebuilt
+# Downloads the official Microsoft ONNX Runtime Windows x64 CPU-only prebuilt
 # binary and places onnxruntime.dll in src-tauri/resources/onnxruntime/ so the
 # decision engine can load it on demand via `ort`'s load-dynamic feature (no
 # Python, no build-time linking — matches the llama.cpp/stable-diffusion.cpp

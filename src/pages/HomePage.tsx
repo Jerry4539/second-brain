@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowUpRight,
-  Gamepad2,
+  AudioLines,
   ImagePlus,
   MessageSquare,
   Palette,
@@ -23,7 +23,7 @@ const ACTIVITIES = [
   {
     to: '/canvas',
     title: 'Canvas',
-    desc: 'Draw freely and relax with ambient sounds.',
+    desc: 'Draw freely and wireframe with Mochi AI.',
     icon: Palette,
     color: 'text-[var(--accent)]',
     bg: 'bg-[var(--accent)]/10',
@@ -45,10 +45,10 @@ const ACTIVITIES = [
     bg: 'bg-purple-500/10',
   },
   {
-    to: '/play',
-    title: 'Play',
-    desc: 'Play Tic-Tac-Toe and Ludo board games.',
-    icon: Gamepad2,
+    to: '/voice',
+    title: 'Voice Studio',
+    desc: 'Natural multi-speaker dialogue & speech synthesis.',
+    icon: AudioLines,
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
   },
